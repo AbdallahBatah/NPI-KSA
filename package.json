@@ -1,0 +1,14 @@
+{
+  "name": "npi-ksa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NPI solar EPC project management system (Arabic, RTL)",
+  "scripts": {
+    "build": "python3 tools/build.py src/npi-projects.html index.html",
+    "seed": "node seed/seed.mjs seed/seed.json",
+    "test": "bash tests/run-all.sh"
+  },
+  "devDependencies": {
+    "playwright": "^1.47.0"
+  }
+}

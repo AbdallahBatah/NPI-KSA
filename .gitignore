@@ -1,0 +1,10 @@
+node_modules/
+tests/out/
+tests/out6/
+tests/out8-*.txt
+*.log
+.DS_Store
+tests/*.png
+tests/*.pdf
+tests/*.xlsx
+tests/*.csv
