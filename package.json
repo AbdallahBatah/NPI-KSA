@@ -4,11 +4,13 @@
   "private": true,
   "description": "NPI solar EPC project management system (Arabic, RTL)",
   "scripts": {
+    "dev": "python3 tools/build.py src/npi-projects.html index.html && python3 tools/serve.py",
+    "start": "python3 tools/serve.py",
     "build": "python3 tools/build.py src/npi-projects.html index.html",
     "seed": "node seed/seed.mjs seed/seed.json",
     "test": "bash tests/run-all.sh"
   },
   "devDependencies": {
-    "playwright": "^1.47.0"
+    "playwright": "^1.65.0"
   }
 }
