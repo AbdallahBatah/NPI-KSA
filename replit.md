@@ -41,8 +41,13 @@
 ## Publishing
 
 - Keep the existing Autoscale publishing target.
-- Build command: `npm run build`.
+- Build command: `npm run build:publish`. This performs a clean install of
+  production dependencies from the lockfile before building the HTML. Do not
+  rely on the workspace's `node_modules` being included in a published image.
 - Run command: `npm start`.
+- Apply `db/schema.sql` to development before publishing schema changes;
+  Publish handles the development-to-production schema migration. Never add
+  production DDL to the build command or server startup.
 - The server listens on `0.0.0.0:5000`, matching the configured public port.
 - Do not use an editor's single-file run command (`bash $file`) for publishing:
   it does not launch the application server.
