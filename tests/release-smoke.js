@@ -187,9 +187,14 @@ async function main() {
   console.log("PASS GET /api/session against the real test schema, with and without a cookie");
 
   async function setupAt(target, body, extraHeaders = {}) {
+    const { setupToken, ...accountBody } = body;
     const response = await fetch(target + "/api/auth/setup", {
-      method: "POST", headers: { "Content-Type": "application/json", ...extraHeaders },
-      body: JSON.stringify(body), signal: AbortSignal.timeout(5000),
+      method: "POST", headers: {
+        "Content-Type": "application/json",
+        ...(typeof setupToken === "string" ? { "X-NPI-Setup-Token": setupToken } : {}),
+        ...extraHeaders,
+      },
+      body: JSON.stringify(accountBody), signal: AbortSignal.timeout(5000),
     });
     return { status: response.status, cookie: response.headers.get("set-cookie"), text: await response.text() };
   }

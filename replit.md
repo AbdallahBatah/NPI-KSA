@@ -14,15 +14,33 @@
 - The app uses the `DATABASE_URL` runtime variable. Do not request or set it.
 - The Node server uses the built-in crypto module for password hashing and
   random, HttpOnly session cookies; `pg` is its only application dependency.
-- On a fresh browser, the Arabic first-run screen creates the general manager
-  account only with the owner's setup token. No demo data is automatically loaded.
-- First-admin setup requires a dedicated `NPI_SETUP_TOKEN` server secret of at
-  least 32 characters (use a randomly generated value). Missing/short tokens
-  disable setup; there is no public fallback. The owner enters it in the
-  password-style setup field; never put it in source, URLs, or browser storage.
-  Remove the secret after successful setup. Existing accounts/sign-in do not
-  depend on it. If the database is reset, setup remains blocked until the owner
-  configures a new token. Do not reuse `SESSION_SECRET` or database credentials.
+- On an uninitialized database, the Arabic first-run screen creates the general
+  manager only with the owner secret `BOOTSTRAP_OWNER_TOKEN`. No demo data is
+  automatically loaded. Without that secret, setup fails closed.
+
+## Owner-only first setup
+
+- The owner must generate a cryptographically random token (at least 32 bytes,
+  represented as 64 hexadecimal characters) privately and store it as the
+  `BOOTSTRAP_OWNER_TOKEN` secret in the environment running the app. Never put
+  its value in source code, chat, URLs, or browser storage.
+- The existing `NPI_SETUP_TOKEN` name remains supported when
+  `BOOTSTRAP_OWNER_TOKEN` is absent. Configure only one; remove either name
+  after setup. Missing/short secrets disable setup with HTTP 503. Never reuse
+  `SESSION_SECRET` or database credentials. Existing sign-in does not depend
+  on the setup secret; a reset database still requires owner authorization.
+- Restart the server after setting the secret, open the setup page over HTTPS,
+  and enter the same token in the masked owner-code field. This is separate
+  from the new general manager's password.
+- The token is sent only in a request header and is checked before accepting
+  account details or a browser snapshot. Existing accounts always close setup;
+  the transaction lock prevents concurrent requests creating two first admins.
+- After successful setup, remove the bootstrap secret and restart the server.
+  Keeping or changing the secret cannot reopen an initialized installation.
+- `node --test tests/bootstrap-owner.test.js` checks the setup boundary with
+  isolated database doubles; it does not modify company records.
+  `node tests/bootstrap-owner.browser.js` checks the setup form at desktop and
+  phone sizes with intercepted API responses and no company-data changes.
 
 ## Data and access
 

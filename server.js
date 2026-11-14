@@ -423,29 +423,32 @@ async function persistUserRecord(id, input, user, isNew = false, req) {
   if (data.active === false) await pool.query("DELETE FROM npi_sessions WHERE user_id=$1", [id]);
   return cleanSecrets(data);
 }
-function requireSetupOwner(body) {
-  const expected = process.env.NPI_SETUP_TOKEN;
-  // Never fall back to public setup or reuse a session/database credential.
-  if (typeof expected !== "string" || expected.trim().length < 32) {
-    fail(503, "تهيئة النظام مغلقة. يجب على مالك النظام ضبط رمز التهيئة الآمن أولاً.");
+function requireSetupOwner(req) {
+  // Preserve the previously supported secret name without accepting body tokens.
+  const expected = process.env.BOOTSTRAP_OWNER_TOKEN ?? process.env.NPI_SETUP_TOKEN;
+  // Fail closed if the owner has not configured a sufficiently long secret.
+  if (typeof expected !== "string" || expected.trim().length < 32 || expected.length > 512) {
+    fail(503, "تهيئة النظام مقفلة. يجب على مالك النظام ضبط رمز التهيئة السري أولاً.");
   }
-  const supplied = body?.setupToken;
-  if (typeof supplied !== "string" || supplied.length > 1024 ||
-      !crypto.timingSafeEqual(
-        crypto.createHash("sha256").update(supplied).digest(),
-        crypto.createHash("sha256").update(expected).digest(),
-      )) {
+  const supplied = req.headers["x-npi-setup-token"];
+  if (typeof supplied !== "string" || supplied.length < 32 || supplied.length > 512) {
+    fail(403, "رمز تهيئة المالك غير صحيح");
+  }
+  const digest = value => crypto.createHash("sha256").update(value).digest();
+  if (!crypto.timingSafeEqual(digest(supplied), digest(expected))) {
     fail(403, "رمز تهيئة المالك غير صحيح");
   }
 }
-async function bootstrap(req, res, body) {
+async function bootstrap(req, res) {
   checkOrigin(req);
-  requireSetupOwner(body);
+  if (await hasSetup()) fail(409, "النظام مهيأ بالفعل");
+  requireSetupOwner(req);
+  // Authenticate before accepting a potentially large browser snapshot.
+  const body = await readBody(req);
   const name = String(body.name || "").trim();
   const username = String(body.username || "").trim().toLowerCase();
   validatePassword(body.password);
   if (!name || !usernameOK(username)) fail(400, "الاسم أو اسم المستخدم غير صالح");
-  if (await hasSetup()) fail(409, "النظام مهيأ بالفعل");
   const imported = body.importData;
   if (imported != null && (typeof imported !== "object" || Array.isArray(imported))) fail(400, "ملف البيانات غير صالح");
   const client = await pool.connect();
@@ -524,7 +527,7 @@ async function handleApi(req, res, url) {
     const user = await readUserBySession(req);
     return send(res, 200, { authenticated: !!user, setupRequired: !(await hasSetup()), user: user ? publicUser(user) : null });
   }
-  if (req.method === "POST" && url.pathname === "/api/auth/setup") return bootstrap(req, res, await readBody(req));
+  if (req.method === "POST" && url.pathname === "/api/auth/setup") return bootstrap(req, res);
   if (req.method === "POST" && url.pathname === "/api/auth/login") {
     checkOrigin(req);
     const body = await readBody(req, 64 * 1024);

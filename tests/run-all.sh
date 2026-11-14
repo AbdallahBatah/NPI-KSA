@@ -5,6 +5,8 @@ cd "$(dirname "$0")"
 python3 ../tools/build.py ../src/npi-projects.html ../index.html
 mkdir -p out out6
 run(){ echo "=== $*"; node "$@"; }
+run --test bootstrap-owner.test.js
+run bootstrap-owner.browser.js
 run smoke.js
 for t in t1 t2 t3 t4 t5 t6 t10; do run $t.js; done
 run t7.js; run t7.js 390 844

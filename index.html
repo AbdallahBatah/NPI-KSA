@@ -825,9 +825,9 @@ function loginView(){
 function setupView(){
   const legacy=MODE==='server'&&localSnapshot();
   const migrate=legacy?`<div class="alert info"><span>${IC.upload}</span><div><b>وجدنا بيانات محفوظة في هذا المتصفح.</b><br>يمكن نسخها إلى قاعدة الشركة مرة واحدة. ستبقى النسخة المحلية كما هي.<label class="check" style="margin-top:10px"><input type="checkbox" id="suImportLocal" checked> استيراد بيانات هذا المتصفح</label></div></div>`:'';
-  return authShell(`<h1>تهيئة النظام</h1><p>أول دخول للنظام. أنشئ حساب المدير العام، ثم أضف بقية الفريق من الإعدادات.</p>
+  return authShell(`<h1>تهيئة النظام</h1><p>هذه الخطوة لمالك النظام فقط وتتطلب رمز التهيئة السري الذي ضُبط في إعدادات الخادم. أنشئ حساب المدير العام، ثم أضف بقية الفريق من الإعدادات. تُغلق التهيئة بعد إنشاء الحساب.</p>
   <form class="auth" id="setupForm" novalidate>
-    <label class="f">رمز تهيئة المالك<input class="in" id="suToken" type="password" dir="ltr" autocomplete="off" required></label>
+    <label class="f">رمز تهيئة المالك<input class="in" id="suOwnerToken" type="password" dir="ltr" autocomplete="off" spellcheck="false" required></label>
     <p class="hint">التهيئة متاحة لمالك النظام فقط. استخدم رمز التهيئة الذي ضُبط على الخادم، وليس كلمة مرور حسابك.</p>
     <label class="f">الاسم الكامل<input class="in" id="suName" required></label>
     <label class="f">اسم المستخدم (بالإنجليزية)<input class="in" id="suUser" dir="ltr" autocomplete="username" required></label>
@@ -869,11 +869,12 @@ document.addEventListener('submit',async e=>{
     if(MODE==='server'){
       if(!SERVER_SETUP)return render();
       const n=$('#suName').value.trim(),u=$('#suUser').value.trim().toLowerCase(),p=$('#suPass').value,p2=$('#suPass2').value;
+      const ownerToken=$('#suOwnerToken').value;$('#suOwnerToken').value='';
+      if(!ownerToken)return authErr('أدخل رمز تهيئة المالك');
       if(!n||!u)return authErr('أدخل الاسم واسم المستخدم');if(!/^[a-z0-9._-]{3,30}$/.test(u))return authErr('اسم المستخدم: 3 أحرف إنجليزية أو أرقام على الأقل، بدون مسافات');
       const r=pwRule(p);if(r)return authErr(r);if(p!==p2)return authErr('كلمتا المرور غير متطابقتين');
       const local=localSnapshot(),importData=local&&$('#suImportLocal')?.checked?local:null;
-      const setupToken=$('#suToken').value;if(!setupToken)return authErr('أدخل رمز تهيئة المالك');
-      try{await api('/api/auth/setup',{method:'POST',body:JSON.stringify({name:n,username:u,password:p,setupToken,importData})});await refreshServerStore();location.hash='home';route='home';render()}
+      try{await api('/api/auth/setup',{method:'POST',headers:{'Content-Type':'application/json','X-NPI-Setup-Token':ownerToken},body:JSON.stringify({name:n,username:u,password:p,importData})});await refreshServerStore();location.hash='home';route='home';render()}
       catch(err){authErr(err.message||'تعذّر تهيئة النظام')}
       return;
     }
