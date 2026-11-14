@@ -1,5 +1,5 @@
-const {chromium}=require('playwright');const fs=require('fs');
-const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed','seed.json')));const U='file://'+require('path').join(__dirname,'..','index.html');
+const {chromium,TEST_URL:U}=require('./support/browser');const fs=require('fs');
+const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed','seed.json')));
 (async()=>{const b=await chromium.launch();
 for(const [vw,vh,tag] of [[1366,860,'lap'],[390,844,'mob']]){const ctx=await b.newContext({viewport:{width:vw,height:vh}});const pg=await ctx.newPage();const errs=[];pg.on('pageerror',e=>errs.push(e.message));pg.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_FAILED'))errs.push(m.text())});
 await pg.route(/fonts\.(googleapis|gstatic)/,r=>r.abort());await pg.goto(U);await pg.evaluate(s=>{localStorage.clear();localStorage.setItem('npi-local-v1',JSON.stringify(s))},seed);

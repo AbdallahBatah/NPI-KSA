@@ -1,6 +1,6 @@
-const {chromium}=require('playwright');const fs=require('fs');
+const {chromium,TEST_URL:U}=require('./support/browser');const fs=require('fs');
 const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed','seed.json')));
-const U='file://'+require('path').join(__dirname,'..','index.html');
+let fails=0;
 (async()=>{
  const b=await chromium.launch();
  const res={};
@@ -10,7 +10,7 @@ const U='file://'+require('path').join(__dirname,'..','index.html');
  await pg.route(/fonts\.(googleapis|gstatic)/,r=>r.abort());
  await pg.goto(U);await pg.evaluate(s=>{localStorage.clear();localStorage.setItem('npi-local-v1',JSON.stringify(s))},seed);
  const as=async(un,hash='home')=>{const m=Object.values(seed.team).find(t=>t.username===un);await pg.evaluate(m=>localStorage.setItem('npi-sess',JSON.stringify({id:m.id,sig:m.passHash.slice(0,16)})),m);await pg.goto(U+'#'+hash);await pg.reload();await pg.waitForTimeout(250)};
- const ovf=async(name)=>{const o=await pg.evaluate(()=>{const W=document.documentElement.clientWidth;const bad=[];if(document.documentElement.scrollWidth>W+1)bad.push('PAGE '+document.documentElement.scrollWidth);document.querySelectorAll('#sheet .sh').forEach(s=>{if(s.scrollWidth>s.clientWidth+1)bad.push('SHEET '+s.scrollWidth)});return bad});if(o.length)console.log(tag,'OVERFLOW',name,o)};
+ const ovf=async(name)=>{const o=await pg.evaluate(()=>{const W=document.documentElement.clientWidth;const bad=[];if(document.documentElement.scrollWidth>W+1)bad.push('PAGE '+document.documentElement.scrollWidth);document.querySelectorAll('#sheet .sh').forEach(s=>{if(s.scrollWidth>s.clientWidth+1)bad.push('SHEET '+s.scrollWidth)});return bad});if(o.length){fails++;console.log(tag,'OVERFLOW',name,o)}};
  const pages={gm:['home','pipeline','projects','stock','purchasing','finance','cycle','settings','profile'],eng1:['home','projects','stock','cycle','profile'],store:['home','projects','stock','purchasing'],finance:['home','finance','purchasing']};
  for(const [u,hs] of Object.entries(pages))for(const h of hs){await as(u,h);await ovf(u+'#'+h);if(tag==='mob'&&u==='gm')await pg.screenshot({path:`out/${tag}-${h}.png`})}
  await as('gm','settings');for(const k of ['ctpl','templates','items','suppliers','data']){await pg.click(`[data-act="settab"][data-k="${k}"]`);await pg.waitForTimeout(100);await ovf('settings-'+k)}
@@ -37,8 +37,9 @@ const U='file://'+require('path').join(__dirname,'..','index.html');
   const kinds=[['budget','pdemo2'],['quote','pdemo3'],['contract','pdemo4'],['execCum','pdemo4'],['handover','pdemo4'],['execDay',seed.dlogs[Object.keys(seed.dlogs).find(k=>seed.dlogs[k].kind==='work')].date],['grn',Object.keys(seed.grns)[0]],['transfer',Object.keys(seed.issues)[0]],['mreq',Object.keys(seed.mreqs)[0]],['po',Object.keys(seed.prs)[0]],['claim',Object.keys(seed.claims)[0]]];
   await as('gm','home');
   for(const [k,id] of kinds){const r=await pg.evaluate(async([k,id])=>{try{const T=window.__npi;await T.pdfFonts();const r=await T.DOCS[k](id);await r.d.finish();const blob=await T.toPdfBlob(r.d.pages);const buf=new Uint8Array(await blob.arrayBuffer());let bin='';for(let i=0;i<buf.length;i+=32768)bin+=String.fromCharCode.apply(null,buf.subarray(i,i+32768));return{ok:true,name:r.name,n:r.d.pages.length,b64:btoa(bin),img:r.d.pages[0].c.toDataURL('image/png')}}catch(e){return{ok:false,err:e.message+e.stack}}},[k,id]);
-   if(!r.ok){console.log('DOC FAIL',k,r.err);continue}fs.writeFileSync(`out/doc-${k}.pdf`,Buffer.from(r.b64,'base64'));console.log('doc',k,r.n,'pages',Math.round(r.b64.length*0.75/1024)+'KB')}
+   if(!r.ok){fails++;console.log('DOC FAIL',k,r.err);continue}fs.writeFileSync(`out/doc-${k}.pdf`,Buffer.from(r.b64,'base64'));console.log('doc',k,r.n,'pages',Math.round(r.b64.length*0.75/1024)+'KB')}
  }
- console.log(tag,'ERRORS',errs);await ctx.close()}
+ console.log(tag,'ERRORS',errs);if(errs.length)fails++;await ctx.close()}
+ if(fails)process.exitCode=1;
  await b.close();
 })();

@@ -1,0 +1,1 @@
+- [Browser test mode](browser-test-mode.md) — use an explicit query flag plus WebDriver detection for browser-only test helpers on hosted HTTPS previews.

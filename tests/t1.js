@@ -1,13 +1,13 @@
-const {chromium}=require('playwright');const fs=require('fs');
+const {chromium,TEST_URL}=require('./support/browser');const fs=require('fs');
 const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed','seed.json')));
 (async()=>{
  const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:1360,height:900}});const pg=await ctx.newPage();
  const errs=[];pg.on('pageerror',e=>errs.push('PAGEERR '+e.message));pg.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_FAILED'))errs.push(m.text())});
  await pg.route(/fonts\.(googleapis|gstatic)/,r=>r.abort());
- await pg.goto('file://'+require('path').join(__dirname,'..','index.html'));
+ await pg.goto(TEST_URL);
  const role=r=>Object.values(seed.team).find(m=>m.role===r).id;
  await pg.evaluate(([s])=>{localStorage.setItem('npi-local-v1',JSON.stringify(s))},[seed]);
- const as=async(r,hash='home')=>{const m=Object.values(seed.team).find(t=>t.role===r);await pg.evaluate(m=>localStorage.setItem('npi-sess',JSON.stringify({id:m.id,sig:m.passHash.slice(0,16)})),m);await pg.goto('file://'+require('path').join(__dirname,'..','index.html')+'#'+hash);await pg.reload();await pg.waitForTimeout(300)};
+ const as=async(r,hash='home')=>{const m=Object.values(seed.team).find(t=>t.role===r);await pg.evaluate(m=>localStorage.setItem('npi-sess',JSON.stringify({id:m.id,sig:m.passHash.slice(0,16)})),m);await pg.goto(TEST_URL+'#'+hash);await pg.reload();await pg.waitForTimeout(300)};
  const shot=async n=>pg.screenshot({path:n+'.png',fullPage:false});
  const click=async sel=>{await pg.click(sel);await pg.waitForTimeout(150)};
  const sheetBtn=async label=>{await pg.locator('#sheet footer button',{hasText:label}).first().click();await pg.waitForTimeout(250)};
@@ -72,5 +72,5 @@ const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed'
  await click('[data-act="drawer"]');await shot('43-m-drawer');
  const ov=await pg.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth);console.log('h-overflow mobile',ov);
  await pg.emulateMedia({colorScheme:'dark'});await pg.setViewportSize({width:1360,height:900});await as('gm','project-'+P('NPI-2026-004'));await shot('50-dark');
- const hr=await pg.evaluate(async(id)=>{try{const T=window.__npi;const r=await T.DOCS.handover(id);await r.d.finish();return r.d.pages[0].c.toDataURL('image/png')}catch(e){return 'ERR '+e.message}},P('NPI-2026-004'));require('fs').writeFileSync('out/handover.png',Buffer.from(hr.split(',')[1],'base64'));console.log('ERRORS',errs);await b.close();
+ const hr=await pg.evaluate(async(id)=>{try{const T=window.__npi;const r=await T.DOCS.handover(id);await r.d.finish();return r.d.pages[0].c.toDataURL('image/png')}catch(e){return 'ERR '+e.message}},P('NPI-2026-004'));require('fs').writeFileSync('out/handover.png',Buffer.from(hr.split(',')[1],'base64'));console.log('ERRORS',errs);if(errs.length)process.exitCode=1;await b.close();
 })();

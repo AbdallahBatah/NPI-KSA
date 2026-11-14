@@ -1,6 +1,5 @@
-const {chromium}=require('playwright');const fs=require('fs');
+const {chromium,TEST_URL:U}=require('./support/browser');const fs=require('fs');
 const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed','seed.json')));
-const U='file://'+require('path').join(__dirname,'..','index.html');
 let fails=0;const check=(c,m)=>{console.log(c?'PASS':'FAIL',m);if(!c)fails++};
 const FAKE=()=>{window.__npiFakeSample=Object.assign(async function(input,opts){const plan=JSON.parse(localStorage.getItem('fakePlan')||'[]');window.__lastSample={n:input.length,first:input[0].content.slice(0,3000),last:input[input.length-1].content,tools:(opts.tools||[]).map(t=>t.name)};localStorage.setItem('lastSample',JSON.stringify(window.__lastSample));const out=[];for(const st of plan){const t=(opts.tools||[]).find(x=>x.name===st.tool);if(!t){out.push('NO_TOOL:'+st.tool);continue}try{const r=await t.execute(st.args,{signal:new AbortController().signal});out.push(JSON.stringify(r).slice(0,300))}catch(e){out.push('Error: '+e.message)}}opts.onText&&opts.onText({text:'…',delta:'…'});return{text:'نتيجة: '+out.join(' | ')}},{limits:async()=>({maxPromptBytes:262144,tools:{maxCount:20},images:{maxCount:1,maxInputBytes:5e6,mediaTypes:['image/jpeg','image/png']}})})};
 (async()=>{
@@ -110,4 +109,4 @@ const FAKE=()=>{window.__npiFakeSample=Object.assign(async function(input,opts){
  check(ae.some(e=>e.a==='update'&&e.c==='prs'&&e.f.some(f=>f[0]==='الحالة')),tag+' audit has field diff');
  // logout clears chat
  console.log(tag,'ERRORS',errs);await ctx.close()}
- await b.close();console.log('FAILS',fails)})();
+ if(fails)process.exitCode=1;await b.close();console.log('FAILS',fails)})();

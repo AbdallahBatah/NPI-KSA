@@ -69,9 +69,10 @@ fetch('seed/seed.json').then(r=>r.json()).then(s=>{localStorage.setItem('npi-loc
 
 ```bash
 npm install
-npx playwright install chromium
 npm test
 ```
+
+On Replit, `npm test` targets the running HTTPS preview and uses the system Chromium executable. Run `npm run test:smoke` for the isolated fresh-account, persistence, logout/login, and mobile setup check. For another environment, set `TEST_BASE_URL` to the app URL and optionally `CHROMIUM_PATH` to a Chromium executable; install Playwright's browser with `npx playwright install chromium` if needed.
 
 تغطي الاختبارات ما يلي:
 - الدورة الكاملة على مشروع جديد بكل الحسابات (74 نقطة).

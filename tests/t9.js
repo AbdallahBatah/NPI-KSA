@@ -1,8 +1,7 @@
 // Alternative paths: real login form, first login, lost lead, rejected / revised quote, stock shortage → PR → PO → GRN → issue,
 // returned handover, custom role user doing engineer work, matrix change routing supplier payment to PGM.
-const {chromium}=require('playwright');const fs=require('fs');
+const {chromium,TEST_URL:U}=require('./support/browser');const fs=require('fs');
 const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed','seed.json')));
-const U='file://'+require('path').join(__dirname,'..','index.html');
 const VW=+(process.argv[2]||1366),VH=+(process.argv[3]||860),TAG=VW<700?'mob':'lap';
 let fails=0,n=0;const ok=(c,m)=>{n++;console.log(c?'PASS':'FAIL',TAG,m);if(!c)fails++};
 (async()=>{
@@ -111,5 +110,5 @@ let fails=0,n=0;const ok=(c,m)=>{n++;console.log(c?'PASS':'FAIL',TAG,m);if(!c)fa
  // ---- I. admin cannot remove last user-admin; system admin account works
  await as('admin','admin');ok(await pg.locator('.tabs button').count()===5,'I system admin sees admin tabs');
  await pg.locator(`[data-act="editMember"][data-id="${who.admin.id}"]:visible`).first().click();await pg.waitForTimeout(150);await pg.selectOption('#sheet [data-k="role"]','store');await btn('حفظ');ok((await shErr()).includes('حسابك'),'I admin cannot demote himself: '+(await shErr()).slice(0,50));await pg.keyboard.press('Escape');
- console.log(TAG,'ERRORS',errs.length?errs:'none');console.log('TOTAL',n,'FAILS',fails);await b.close();
+ console.log(TAG,'ERRORS',errs.length?errs:'none');console.log('TOTAL',n,'FAILS',fails);if(fails||errs.length)process.exitCode=1;await b.close();
 })();

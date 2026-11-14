@@ -1,6 +1,6 @@
 // Every AI tool for every role: prepare → confirm → verify state; read tools return data without throwing.
-const {chromium}=require('playwright');const fs=require('fs');
-const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed','seed.json')));const U='file://'+require('path').join(__dirname,'..','index.html');
+const {chromium,TEST_URL:U}=require('./support/browser');const fs=require('fs');
+const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed','seed.json')));
 let fails=0,n=0;const ok=(c,m)=>{n++;console.log(c?'PASS':'FAIL',m);if(!c)fails++};
 const FAKE=()=>{window.__npiFakeSample=Object.assign(async function(input,opts){const plan=JSON.parse(localStorage.getItem('fakePlan')||'[]');const out=[];window.__toolsSeen=(opts.tools||[]).map(t=>t.name);for(const st of plan){const t=(opts.tools||[]).find(x=>x.name===st.tool);if(!t){out.push('NO_TOOL:'+st.tool);continue}try{const r=await t.execute(st.args,{});out.push('OK:'+JSON.stringify(r).slice(0,400))}catch(e){out.push('ERR:'+e.message)}}localStorage.setItem('fakeOut',JSON.stringify(out));return{text:out.join('\n')}},{limits:async()=>({tools:{maxCount:20},images:{maxCount:1,maxInputBytes:5e6,mediaTypes:['image/png','image/jpeg']}})})};
 (async()=>{
@@ -53,5 +53,5 @@ const FAKE=()=>{window.__npiFakeSample=Object.assign(async function(input,opts){
  r=await run([{tool:'create_item',args:{code:'MAT-X-1',name:'صنف تجريبي',unit:'عدد'}}]);ok(r.out[0].startsWith('OK')||r.out[0].startsWith('NO_TOOL'),'tech item tool per permissions → '+r.out[0].slice(0,40));
  // admin
  await as('admin');r=await run(reads,false);ok(r.out.every(o=>o.startsWith('OK')),'admin read tools');
- console.log('ERRORS',errs.length?errs:'none');console.log('TOTAL',n,'FAILS',fails);await b.close();
+ console.log('ERRORS',errs.length?errs:'none');console.log('TOTAL',n,'FAILS',fails);if(fails||errs.length)process.exitCode=1;await b.close();
 })();

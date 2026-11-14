@@ -1,11 +1,10 @@
-const {chromium}=require('playwright');const fs=require('fs');
+const {chromium,TEST_URL:U}=require('./support/browser');const fs=require('fs');
 const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed','seed.json')));
-const U='file://'+require('path').join(__dirname,'..','index.html');
 (async()=>{
  const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:1360,height:900}});const pg=await ctx.newPage();
  const errs=[];pg.on('pageerror',e=>errs.push('PAGEERR '+e.message));pg.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_FAILED'))errs.push(m.text())});
  await pg.route(/fonts\.(googleapis|gstatic)/,r=>r.abort());
- const check=(c,msg)=>console.log((c?'PASS ':'FAIL ')+msg);
+ let fails=0;const check=(c,msg)=>{console.log((c?'PASS ':'FAIL ')+msg);if(!c)fails++};
  // 1. empty -> setup
  await pg.goto(U);await pg.waitForTimeout(300);
  check(await pg.locator('#setupForm').count()===1,'empty system shows setup page');await pg.screenshot({path:'a1-setup.png'});
@@ -74,5 +73,5 @@ const U='file://'+require('path').join(__dirname,'..','index.html');
  // mobile login
  await pg.evaluate(()=>localStorage.removeItem('npi-sess'));await pg.setViewportSize({width:390,height:844});await pg.reload();await pg.waitForTimeout(300);await pg.screenshot({path:'a9-m-login.png'});
  await pg.emulateMedia({colorScheme:'dark'});await pg.setViewportSize({width:1360,height:900});await pg.reload();await pg.waitForTimeout(300);await pg.screenshot({path:'a10-dark-login.png'});
- console.log('ERRORS',errs);await b.close();
+ console.log('ERRORS',errs);if(fails||errs.length)process.exitCode=1;await b.close();
 })();

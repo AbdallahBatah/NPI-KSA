@@ -522,17 +522,18 @@ const LOGO=`<svg class="logo" viewBox="0 0 900 457" aria-label="NPI"><defs><line
 const S={}; COLS.forEach(c=>S[c]={});
 let DB=null, ASSETS=null, DL=null, MODE='loading', loaded=new Set(), slowTimer=null, slowNote=false;
 const LKEY='npi-local-v1';
+const E2E_MODE=new URLSearchParams(location.search).get('e2e')==='1'&&navigator.webdriver;
 function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LKEY)||'null');if(j)COLS.forEach(c=>S[c]=j[c]||{})}catch(e){}}
 function saveLocal(){try{localStorage.setItem(LKEY,JSON.stringify(S))}catch(e){}}
 const wq={};
 function queue(key,fn){const p=(wq[key]||Promise.resolve()).then(fn,fn);wq[key]=p.catch(()=>{});return p}
 async function put(col,id,data){
-  if(location.protocol==='file:'&&window.__npiFreeze)return;
+  if((location.protocol==='file:'||E2E_MODE)&&window.__npiFreeze)return;
   data=clone(data); data.id=id; const before=S[col][id]; S[col][id]=data; auditLog(before?'update':'create',col,id,before,data); schedule();
   if(DB){try{await queue(col+'/'+id,()=>DB.collection(col).doc(id).set(data))}catch(e){toast(e?.code==='quota_exceeded'?'امتلأت مساحة البيانات':'تعذّر الحفظ — تحقق من صلاحية التعديل');console.warn(e)}}
   else saveLocal();
 }
-async function del(col,id){if(location.protocol==='file:'&&window.__npiFreeze)return;auditLog('delete',col,id,S[col][id],null);delete S[col][id];schedule();if(DB){try{await queue(col+'/'+id,()=>DB.collection(col).doc(id).delete())}catch(e){toast('تعذّر الحذف')}}else saveLocal()}
+async function del(col,id){if((location.protocol==='file:'||E2E_MODE)&&window.__npiFreeze)return;auditLog('delete',col,id,S[col][id],null);delete S[col][id];schedule();if(DB){try{await queue(col+'/'+id,()=>DB.collection(col).doc(id).delete())}catch(e){toast('تعذّر الحذف')}}else saveLocal()}
 const L=col=>Object.values(S[col]);
 async function initStore(){
   let db=null;
@@ -1660,7 +1661,7 @@ function projTasks(p){const ts=L('ftasks').filter(t=>t.project===p.id&&t.status!
 
 /* ============ AI assistant (acts with the signed-in user's permissions; every write needs confirmation) ============ */
 let SAMPLE=null,AI_CAPS=null,CHAT=[],AI_BUSY=false,AI_CTL=null,AI_ACT={},AI_OPEN=false,AI_IMGS=[],AI_STREAM='';
-async function aiInit(){try{if(location.protocol==='file:'&&window.__npiFakeSample)SAMPLE=window.__npiFakeSample;else if(window.claude?.use)SAMPLE=await window.claude.use('sample')}catch(e){SAMPLE=null}
+async function aiInit(){try{if((location.protocol==='file:'||E2E_MODE)&&window.__npiFakeSample)SAMPLE=window.__npiFakeSample;else if(window.claude?.use)SAMPLE=await window.claude.use('sample')}catch(e){SAMPLE=null}
   try{AI_CAPS=SAMPLE&&SAMPLE.limits?await SAMPLE.limits():{tools:{maxCount:20}}}catch(e){AI_CAPS={tools:{maxCount:20}}}aiDraw()}
 let AI_OFF='';
 
@@ -2082,7 +2083,7 @@ A.editCtpl=()=>openSheet({title:'نموذج العقد والعرض',wide:true,r
 A.clearDemo=()=>!perm('admin.demo')?toast('لا تملك الصلاحية'):openSheet({title:'حذف البيانات التجريبية',draft:{},body:()=>`<div class="alert bad"><span>${IC.alert}</span><div>ستُحذف كل المشاريع والحركات والمستخدمين المعلَّمين «مثال». لا يمكن التراجع.</div></div>`,actions:[{label:'حذف نهائي',cls:'bad',fn:async()=>{for(const c of COLS){if(['items','templates','suppliers','meta'].includes(c))continue;for(const x of L(c))if(x.demo&&!(c==='team'&&x.id===meId))await del(c,x.id)}return'حُذفت البيانات التجريبية'}}]});
 
 /* ============ boot ============ */
-if(location.protocol==='file:')window.__npi={DOCS,toPdfBlob,pdfFonts,EXPORTS,makeXlsx,makeCsv,readXlsx,readCsv,qTotals};
+if(location.protocol==='file:'||E2E_MODE)window.__npi={DOCS,toPdfBlob,pdfFonts,EXPORTS,makeXlsx,makeCsv,readXlsx,readCsv,qTotals};
 readRoute();
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&SH)closeSheet()});
 initStore();

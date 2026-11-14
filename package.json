@@ -8,7 +8,8 @@
     "start": "python3 tools/serve.py",
     "build": "python3 tools/build.py src/npi-projects.html index.html",
     "seed": "node seed/seed.mjs seed/seed.json",
-    "test": "bash tests/run-all.sh"
+    "test": "bash tests/run-all.sh",
+    "test:smoke": "node tests/smoke.js"
   },
   "devDependencies": {
     "playwright": "^1.65.0"

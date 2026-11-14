@@ -1,7 +1,6 @@
 // Full 16-step cycle on a brand-new client, driven only through the UI, switching accounts at every hand-off.
-const {chromium}=require('playwright');const fs=require('fs');
+const {chromium,TEST_URL:U}=require('./support/browser');const fs=require('fs');
 const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed','seed.json')));
-const U='file://'+require('path').join(__dirname,'..','index.html');
 const VW=+(process.argv[2]||1366),VH=+(process.argv[3]||860),TAG=VW<700?'mob':'lap';
 let fails=0,n=0;const ok=(c,m)=>{n++;console.log(c?'PASS':'FAIL',TAG,m);if(!c)fails++};
 (async()=>{
@@ -150,6 +149,6 @@ let fails=0,n=0;const ok=(c,m)=>{n++;console.log(c?'PASS':'FAIL',TAG,m);if(!c)fa
  // 26) log, audit
  s=await ST();ok((s.projects[id].log||[]).length>=15,' 26 project log has '+(s.projects[id].log||[]).length+' entries');
  await as('gm','admin');await pg.waitForTimeout(1500);await as('gm','admin');s=await ST();const ae=Object.values(s.audit||{}).flatMap(d=>d.e||[]);ok(ae.filter(e=>e.id===id).length>5,' 26 audit trail for project: '+ae.filter(e=>e.id===id).length);
- console.log(TAG,'ERRORS',errs.length?errs:'none');console.log('TOTAL',n,'FAILS',fails);await b.close();
+ console.log(TAG,'ERRORS',errs.length?errs:'none');console.log('TOTAL',n,'FAILS',fails);if(fails||errs.length)process.exitCode=1;await b.close();
 })();
 function N(v){return +v||0}

@@ -3,3 +3,8 @@ node_modules/
 .cache/
 tests/out/
 tests/out6/
+tests/out8-*.txt
+tests/*.png
+tests/*.pdf
+tests/*.xlsx
+tests/*.csv

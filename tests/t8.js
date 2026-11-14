@@ -1,7 +1,6 @@
 // Crawler: every account × every route × every tab × every visible button; writes are frozen so clicks can't cascade.
-const {chromium}=require('playwright');const fs=require('fs');
+const {chromium,TEST_URL:U}=require('./support/browser');const fs=require('fs');
 const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed','seed.json')));
-const U='file://'+require('path').join(__dirname,'..','index.html');
 const VW=+(process.argv[2]||1366),VH=+(process.argv[3]||860),TAG=VW<700?'mob':'lap';
 const ONLY=process.argv[4];
 const ROUTES=['home','pipeline','clients','projects','stock','purchasing','finance','cycle','settings','admin','profile'];
@@ -50,7 +49,7 @@ const issues=[];const note=(k,m)=>{issues.push(`[${TAG}] ${k}: ${m}`)};
      if(await sheetOpen()){const ov2=await overflow();if(ov2.length)note(cur,'SHEET OVERFLOW '+ov2.join(' ; '));
        // exercise selects in sheet (redraws)
        const sels=pg.locator('#sheet select:visible');const ns=Math.min(await sels.count(),3);for(let k=0;k<ns;k++){const opts=await sels.nth(k).locator('option').evaluateAll(o=>o.map(x=>x.value));if(opts.length>1){await sels.nth(k).selectOption(opts[opts.length-1]).catch(()=>{});await pg.waitForTimeout(80)}}
-       const bad=await pg.locator('#sheet .alert.bad').count();if(bad)note(cur,'SHEET OPENS WITH ERROR '+(await pg.locator('#sheet .alert.bad').first().innerText()).slice(0,80));
+       const bad=await pg.locator('#sheet .alert.bad').count();if(bad){const message=await pg.locator('#sheet .alert.bad').first().innerText();const expectedDeleteWarning=x.act==='clearDemo'&&message.includes('لا يمكن التراجع');if(!expectedDeleteWarning)note(cur,'SHEET OPENS WITH ERROR '+message.slice(0,80))}
        await closeSheet()}
      const after=await pg.evaluate(()=>location.hash);
      if(after!==before||await sheetOpen()||(await pg.locator('details[open]').count())){await goState()}
@@ -60,5 +59,5 @@ const issues=[];const note=(k,m)=>{issues.push(`[${TAG}] ${k}: ${m}`)};
   console.log(TAG,u.username,'done; clicks so far',clicks,'issues',issues.length);
  }
  fs.writeFileSync(`out8-${TAG}.txt`,issues.join('\n'));
- console.log('ISSUES',issues.length);console.log([...new Set(issues.map(i=>i.replace(/project-[a-z0-9]+/g,'project-X')))].slice(0,120).join('\n'));await b.close();
+ console.log('ISSUES',issues.length);console.log([...new Set(issues.map(i=>i.replace(/project-[a-z0-9]+/g,'project-X')))].slice(0,120).join('\n'));if(issues.length)process.exitCode=1;await b.close();
 })();
