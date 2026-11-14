@@ -95,6 +95,10 @@ async function main() {
     assert.equal(found.status, 0, `Release smoke check requires ${command} on PATH (PostgreSQL server/client tools are required).`);
   }
   assert.notEqual(process.getuid?.(), 0, "Run as a non-root user; initdb refuses root.");
+  const publishIgnore = fs.readFileSync(path.join(ROOT, ".replitignore"), "utf8");
+  assert.ok(!publishIgnore.split(/\r?\n/).some(line =>
+    /^(?:\/|\*\*\/)?node_modules(?:\/|\b)/.test(line.trim())),
+  "Publishing must not exclude installed node_modules; keep that exclusion in .gitignore only.");
   temporary = fs.mkdtempSync(path.join(os.tmpdir(), "npi-release-"));
   env.HOME = path.join(temporary, "home");
   fs.mkdirSync(env.HOME);

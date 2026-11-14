@@ -70,6 +70,8 @@
   production dependencies from the lockfile before building the HTML. Do not
   rely on the workspace's `node_modules` being included in a published image.
 - Run command: `npm start`.
+- Keep `node_modules/` ignored by Git, but not by `.replitignore`: publishing
+  needs the production dependencies installed by the build.
 - Apply `db/schema.sql` to development before publishing schema changes;
   Publish handles the development-to-production schema migration. Never add
   production DDL to the build command or server startup.
