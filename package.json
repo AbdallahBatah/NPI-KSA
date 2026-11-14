@@ -7,6 +7,7 @@
     "dev": "python3 tools/build.py src/npi-projects.html index.html && node server.js",
     "start": "node server.js",
     "build": "python3 tools/build.py src/npi-projects.html index.html",
+    "build:publish": "npm ci --omit=dev --no-audit --no-fund && npm run build",
     "seed": "node seed/seed.mjs seed/seed.json",
     "test": "bash tests/run-all.sh",
     "test:smoke": "node tests/smoke.js"
