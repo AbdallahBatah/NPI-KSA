@@ -446,7 +446,7 @@ table.pmx input{width:17px;height:17px;accent-color:var(--accent)}
 (()=>{
 "use strict";
 document.documentElement.dir="rtl";document.documentElement.lang="ar";
-/* ============ constants ============ */
+/* ------ constants ------ */
 const ROLES={
   gm:{ar:'المدير العام',d:'الاعتمادات النهائية: الموازنات، العقود، أوامر الشراء، التجاوزات، إغلاق المشاريع'},
   pgm:{ar:'مدير عام المشاريع',d:'العملاء والتفاوض، الدراسة والموازنة، عرض السعر، تعيين المهندس، اعتماد الطلبات'},
@@ -469,7 +469,7 @@ const TRIG={signing:'عند توقيع العقد (مقدمة)',materials:'عن�
 const VAT=0.15;
 const COLS=['team','items','suppliers','templates','projects','mreqs','issues','prs','grns','returns','dlogs','overruns','claims','moves','costs','spay','meta','clients','audit','ftasks'];
 
-/* ============ utils ============ */
+/* ------ utils ------ */
 const A={};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -490,7 +490,7 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 function setPath(o,p,v){const k=p.split('.');let c=o;for(let i=0;i<k.length-1;i++){if(c[k[i]]==null)c[k[i]]=/^\d+$/.test(k[i+1])?[]:{};c=c[k[i]]}c[k[k.length-1]]=v}
 function getPath(o,p){return p.split('.').reduce((c,k)=>c==null?undefined:c[k],o)}
 
-/* ============ icons ============ */
+/* ------ icons ------ */
 const I=(d)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const IC={
  home:I('<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>'),
@@ -518,24 +518,56 @@ search:I('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>'),upload:I(
 };
 const LOGO=`<svg class="logo" viewBox="0 0 900 457" aria-label="NPI"><defs><linearGradient id="npiSun" gradientUnits="userSpaceOnUse" x1="793" y1="0" x2="793" y2="214"><stop offset="0" stop-color="#FFC20E"/><stop offset=".3" stop-color="#F99B1C"/><stop offset=".55" stop-color="#F26F21"/><stop offset=".78" stop-color="#F04123"/><stop offset="1" stop-color="#ED1C24"/></linearGradient></defs><g fill="currentColor" fill-rule="evenodd"><path d="M13 148H80L207 327.22V161A13 13 0 0 1 220 148H274A13 13 0 0 1 287 161V444A13 13 0 0 1 274 457H207L80 277.78V444A13 13 0 0 1 67 457H13A13 13 0 0 1 0 444V161A13 13 0 0 1 13 148Z"/><path d="M326 148H462.5A112.5 112.5 0 0 1 462.5 373H393V444A13 13 0 0 1 380 457H326A13 13 0 0 1 313 444V161A13 13 0 0 1 326 148ZM413 217H495A46.5 46.5 0 0 1 495 310H413A8 8 0 0 1 405 302V225A8 8 0 0 1 413 217Z"/><path d="M613 148H667A13 13 0 0 1 680 161V444A13 13 0 0 1 667 457H613A13 13 0 0 1 600 444V161A13 13 0 0 1 613 148Z"/></g><g fill="url(#npiSun)"><path d="M785.56 9.14L790.75 34.17A2.3 2.3 0 0 0 795.25 34.17L800.44 9.14A7.6 7.6 0 1 0 785.56 9.14Z"/><path d="M811.14 10.55L809.68 36.07A2.3 2.3 0 0 0 814.03 37.23L825.52 14.4A7.6 7.6 0 1 0 811.14 10.55Z"/><path d="M835.48 18.53L827.47 42.8A2.3 2.3 0 0 0 831.37 45.05L848.37 25.97A7.6 7.6 0 1 0 835.48 18.53Z"/><path d="M856.93 32.54L842.91 53.91A2.3 2.3 0 0 0 846.09 57.09L867.46 43.07A7.6 7.6 0 1 0 856.93 32.54Z"/><path d="M874.03 51.63L854.95 68.63A2.3 2.3 0 0 0 857.2 72.53L881.47 64.52A7.6 7.6 0 1 0 874.03 51.63Z"/><path d="M885.6 74.48L862.77 85.97A2.3 2.3 0 0 0 863.93 90.32L889.45 88.86A7.6 7.6 0 1 0 885.6 74.48Z"/><path d="M890.86 99.56L865.83 104.75A2.3 2.3 0 0 0 865.83 109.25L890.86 114.44A7.6 7.6 0 1 0 890.86 99.56Z"/><path d="M889.45 125.14L863.93 123.68A2.3 2.3 0 0 0 862.77 128.03L885.6 139.52A7.6 7.6 0 1 0 889.45 125.14Z"/><path d="M881.47 149.48L857.2 141.47A2.3 2.3 0 0 0 854.95 145.37L874.03 162.37A7.6 7.6 0 1 0 881.47 149.48Z"/><path d="M867.46 170.93L846.09 156.91A2.3 2.3 0 0 0 842.91 160.09L856.93 181.46A7.6 7.6 0 1 0 867.46 170.93Z"/><path d="M848.37 188.03L831.37 168.95A2.3 2.3 0 0 0 827.47 171.2L835.48 195.47A7.6 7.6 0 1 0 848.37 188.03Z"/><path d="M825.52 199.6L814.03 176.77A2.3 2.3 0 0 0 809.68 177.93L811.14 203.45A7.6 7.6 0 1 0 825.52 199.6Z"/><path d="M800.44 204.86L795.25 179.83A2.3 2.3 0 0 0 790.75 179.83L785.56 204.86A7.6 7.6 0 1 0 800.44 204.86Z"/><path d="M774.86 203.45L776.32 177.93A2.3 2.3 0 0 0 771.97 176.77L760.48 199.6A7.6 7.6 0 1 0 774.86 203.45Z"/><path d="M750.52 195.47L758.53 171.2A2.3 2.3 0 0 0 754.63 168.95L737.63 188.03A7.6 7.6 0 1 0 750.52 195.47Z"/><path d="M729.07 181.46L743.09 160.09A2.3 2.3 0 0 0 739.91 156.91L718.54 170.93A7.6 7.6 0 1 0 729.07 181.46Z"/><path d="M711.97 162.37L731.05 145.37A2.3 2.3 0 0 0 728.8 141.47L704.53 149.48A7.6 7.6 0 1 0 711.97 162.37Z"/><path d="M700.4 139.52L723.23 128.03A2.3 2.3 0 0 0 722.07 123.68L696.55 125.14A7.6 7.6 0 1 0 700.4 139.52Z"/><path d="M695.14 114.44L720.17 109.25A2.3 2.3 0 0 0 720.17 104.75L695.14 99.56A7.6 7.6 0 1 0 695.14 114.44Z"/><path d="M696.55 88.86L722.07 90.32A2.3 2.3 0 0 0 723.23 85.97L700.4 74.48A7.6 7.6 0 1 0 696.55 88.86Z"/><path d="M704.53 64.52L728.8 72.53A2.3 2.3 0 0 0 731.05 68.63L711.97 51.63A7.6 7.6 0 1 0 704.53 64.52Z"/><path d="M718.54 43.07L739.91 57.09A2.3 2.3 0 0 0 743.09 53.91L729.07 32.54A7.6 7.6 0 1 0 718.54 43.07Z"/><path d="M737.63 25.97L754.63 45.05A2.3 2.3 0 0 0 758.53 42.8L750.52 18.53A7.6 7.6 0 1 0 737.63 25.97Z"/><path d="M760.48 14.4L771.97 37.23A2.3 2.3 0 0 0 776.32 36.07L774.86 10.55A7.6 7.6 0 1 0 760.48 14.4Z"/><path d="M797.6 59.68L797.45 77.07A1.5 1.5 0 0 0 800.34 77.65L806.85 61.52A4.8 4.8 0 1 0 797.6 59.68Z"/><path d="M815.36 65.05L808.56 81.05A1.5 1.5 0 0 0 811.01 82.69L823.2 70.29A4.8 4.8 0 1 0 815.36 65.05Z"/><path d="M829.71 76.8L817.31 88.99A1.5 1.5 0 0 0 818.95 91.44L834.95 84.64A4.8 4.8 0 1 0 829.71 76.8Z"/><path d="M838.48 93.15L822.35 99.66A1.5 1.5 0 0 0 822.93 102.55L840.32 102.4A4.8 4.8 0 1 0 838.48 93.15Z"/><path d="M840.32 111.6L822.93 111.45A1.5 1.5 0 0 0 822.35 114.34L838.48 120.85A4.8 4.8 0 1 0 840.32 111.6Z"/><path d="M834.95 129.36L818.95 122.56A1.5 1.5 0 0 0 817.31 125.01L829.71 137.2A4.8 4.8 0 1 0 834.95 129.36Z"/><path d="M823.2 143.71L811.01 131.31A1.5 1.5 0 0 0 808.56 132.95L815.36 148.95A4.8 4.8 0 1 0 823.2 143.71Z"/><path d="M806.85 152.48L800.34 136.35A1.5 1.5 0 0 0 797.45 136.93L797.6 154.32A4.8 4.8 0 1 0 806.85 152.48Z"/><path d="M788.4 154.32L788.55 136.93A1.5 1.5 0 0 0 785.66 136.35L779.15 152.48A4.8 4.8 0 1 0 788.4 154.32Z"/><path d="M770.64 148.95L777.44 132.95A1.5 1.5 0 0 0 774.99 131.31L762.8 143.71A4.8 4.8 0 1 0 770.64 148.95Z"/><path d="M756.29 137.2L768.69 125.01A1.5 1.5 0 0 0 767.05 122.56L751.05 129.36A4.8 4.8 0 1 0 756.29 137.2Z"/><path d="M747.52 120.85L763.65 114.34A1.5 1.5 0 0 0 763.07 111.45L745.68 111.6A4.8 4.8 0 1 0 747.52 120.85Z"/><path d="M745.68 102.4L763.07 102.55A1.5 1.5 0 0 0 763.65 99.66L747.52 93.15A4.8 4.8 0 1 0 745.68 102.4Z"/><path d="M751.05 84.64L767.05 91.44A1.5 1.5 0 0 0 768.69 88.99L756.29 76.8A4.8 4.8 0 1 0 751.05 84.64Z"/><path d="M762.8 70.29L774.99 82.69A1.5 1.5 0 0 0 777.44 81.05L770.64 65.05A4.8 4.8 0 1 0 762.8 70.29Z"/><path d="M779.15 61.52L785.66 77.65A1.5 1.5 0 0 0 788.55 77.07L788.4 59.68A4.8 4.8 0 1 0 779.15 61.52Z"/></g></svg>`;
 
-/* ============ store ============ */
+/* ------ store ------ */
 const S={}; COLS.forEach(c=>S[c]={});
-let DB=null, ASSETS=null, DL=null, MODE='loading', loaded=new Set(), slowTimer=null, slowNote=false;
+let DB=null, ASSETS=null, DL=null, MODE='loading', loaded=new Set(), slowTimer=null, slowNote=false, SERVER_SETUP=false, SERVER_REFRESH=null;
 const LKEY='npi-local-v1';
 const E2E_MODE=new URLSearchParams(location.search).get('e2e')==='1'&&navigator.webdriver;
 function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LKEY)||'null');if(j)COLS.forEach(c=>S[c]=j[c]||{})}catch(e){}}
 function saveLocal(){try{localStorage.setItem(LKEY,JSON.stringify(S))}catch(e){}}
+async function api(path,options={}){const r=await fetch(path,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(options.headers||{})},...options});let body={};try{body=await r.json()}catch(e){}if(!r.ok){const err=new Error(body.error||'تعذّر الاتصال بالخادم');err.status=r.status;throw err}return body}
+function localSnapshot(){try{const v=JSON.parse(localStorage.getItem(LKEY)||'null');return v&&typeof v==='object'&&!Array.isArray(v)?v:null}catch(e){return null}}
+async function refreshServerStore(){
+  const session=await api('/api/session',{headers:{'Content-Type':'application/json'}});
+  SERVER_SETUP=!!session.setupRequired;
+  if(session.authenticated&&session.user){
+    SESS={id:session.user.id};meId=SESS.id;
+    if(session.user.mustChange){
+      COLS.forEach(c=>S[c]={});
+      S.team[session.user.id]={id:session.user.id,name:session.user.name,username:session.user.username,role:session.user.role,active:session.user.active,mustChange:true};
+    }else{
+      try{const data=await api('/api/data',{headers:{'Content-Type':'application/json'}});COLS.forEach(c=>S[c]=data[c]||{})}
+      catch(err){if(err.status===401){SESS=null;meId=null;COLS.forEach(c=>S[c]={})}else throw err}
+    }
+  }else{
+    SESS=null;meId=null;COLS.forEach(c=>S[c]={});
+  }
+  COLS.forEach(c=>loaded.add(c));schedule();
+}
 const wq={};
 function queue(key,fn){const p=(wq[key]||Promise.resolve()).then(fn,fn);wq[key]=p.catch(()=>{});return p}
 async function put(col,id,data){
   if((location.protocol==='file:'||E2E_MODE)&&window.__npiFreeze)return;
-  data=clone(data); data.id=id; const before=S[col][id]; S[col][id]=data; auditLog(before?'update':'create',col,id,before,data); schedule();
+  data=clone(data); data.id=id;
+  if(MODE==='server'){
+    try{const before=S[col][id];const result=await api(`/api/data/${encodeURIComponent(col)}/${encodeURIComponent(id)}`,{method:'PUT',body:JSON.stringify(data)});S[col][id]=result.record||data;auditLog(before?'update':'create',col,id,before,S[col][id]);schedule()}
+    catch(e){toast(e.message||'تعذّر الحفظ');throw e}
+    return;
+  }
+  const before=S[col][id]; S[col][id]=data; auditLog(before?'update':'create',col,id,before,data); schedule();
   if(DB){try{await queue(col+'/'+id,()=>DB.collection(col).doc(id).set(data))}catch(e){toast(e?.code==='quota_exceeded'?'امتلأت مساحة البيانات':'تعذّر الحفظ — تحقق من صلاحية التعديل');console.warn(e)}}
   else saveLocal();
 }
-async function del(col,id){if((location.protocol==='file:'||E2E_MODE)&&window.__npiFreeze)return;auditLog('delete',col,id,S[col][id],null);delete S[col][id];schedule();if(DB){try{await queue(col+'/'+id,()=>DB.collection(col).doc(id).delete())}catch(e){toast('تعذّر الحذف')}}else saveLocal()}
+async function del(col,id){if((location.protocol==='file:'||E2E_MODE)&&window.__npiFreeze)return;if(MODE==='server'){try{await api(`/api/data/${encodeURIComponent(col)}/${encodeURIComponent(id)}`,{method:'DELETE'});auditLog('delete',col,id,S[col][id],null);delete S[col][id];schedule()}catch(e){toast(e.message||'تعذّر الحذف');throw e}return}auditLog('delete',col,id,S[col][id],null);delete S[col][id];schedule();if(DB){try{await queue(col+'/'+id,()=>DB.collection(col).doc(id).delete())}catch(e){toast('تعذّر الحذف')}}else saveLocal()}
 const L=col=>Object.values(S[col]);
 async function initStore(){
+  if(location.protocol!=='file:'&&!E2E_MODE){
+    MODE='server';
+    try{await refreshServerStore()}
+    catch(e){MODE='server';SERVER_SETUP=false;COLS.forEach(c=>loaded.add(c));schedule();console.error(e);setTimeout(()=>{if(MODE==='server')refreshServerStore().catch(err=>console.error(err))},3000)}
+    if(!SERVER_REFRESH)SERVER_REFRESH=setInterval(()=>{if(MODE==='server'&&SESS&&document.visibilityState==='visible')refreshServerStore().catch(e=>console.warn(e))},15000);
+    return;
+  }
   let db=null;
   try{ if(window.claude?.use){ db=await window.claude.use('db'); try{ASSETS=await window.claude.use('assets')}catch(e){ASSETS=null} try{DL=await window.claude.use('downloads')}catch(e){DL=null} } }catch(e){db=null}
   if(db){
@@ -552,14 +584,14 @@ async function initStore(){
 }
 let rq=false; function schedule(){if(rq)return;rq=true;requestAnimationFrame(()=>{rq=false;render()})}
 
-/* ============ identity ============ */
+/* ------ identity ------ */
 let ME=null;
 const SKEY='npi-sess';
 function sessLoad(){for(const st of ['localStorage','sessionStorage']){try{const v=JSON.parse(window[st].getItem(SKEY)||'null');if(v)return v}catch(e){}}return null}
 function sessSave(v,remember){for(const st of ['localStorage','sessionStorage']){try{window[st].removeItem(SKEY)}catch(e){}}if(!v)return;try{window[remember?'localStorage':'sessionStorage'].setItem(SKEY,JSON.stringify(v))}catch(e){}}
-let SESS=sessLoad();let meId=SESS?.id||null;
+let SESS=(location.protocol==='file:'||E2E_MODE)?sessLoad():null;let meId=SESS?.id||null;
 async function hashPw(salt,pw){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(salt+':'+pw));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
-function sessionUser(){if(!SESS)return null;const m=S.team[SESS.id];if(!m||m.active===false||!m.passHash||m.passHash.slice(0,16)!==SESS.sig)return null;return m}
+function sessionUser(){if(!SESS)return null;const m=S.team[SESS.id];if(!m||m.active===false)return null;if(MODE==='server')return m;if(!m.passHash||m.passHash.slice(0,16)!==SESS.sig)return null;return m}
 const money=()=>perm('see.money');
 let loginFails=0,lockUntil=0;
 const role=()=>ME?roleDef(ME.role).base:undefined;
@@ -567,7 +599,7 @@ const is=(...r)=>r.includes(role());
 const member=id=>S.team[id];
 const mname=id=>member(id)?.name||'—';
 
-/* ============ domain helpers ============ */
+/* ------ domain helpers ------ */
 const P=id=>S.projects[id];
 const item=id=>S.items[id];
 const supplier=id=>S.suppliers[id];
@@ -611,7 +643,7 @@ function canSee(p){if(!p)return false;if(perm('projects.all'))return true;if(is(
 const visLog=arr=>(arr||[]).filter(l=>!l.m||money());
 function myProjects(){return L('projects').filter(canSee)}
 
-/* ============ company / templates (meta) ============ */
+/* ------ company / templates (meta) ------ */
 const STD_COLS=[['piling','ماكينة الدق'],['structure','تركيب الهياكل'],['panels','تركيب الألواح'],['electrical','تنفيذ الكهرباء']];
 const CODE_AR=Object.fromEntries(STD_COLS);
 const DEF_COMPANY={nameAr:'شركة الطاقة والصناعة الوطنية',nameEn:'National Power & Industrial Ltd',legal:'شركة الطاقة والصناعة الوطنية المحدودة شركة شخص واحد',city:'المبرز',cr:'2252064097',unified:'7009392213',vat:'301247783800003',repName:'محمد سعد عبد العزيز الحسين',repTitle:'مدير الشركة',repId:'',addressAr:'مدينة: المبرز هاتف: 01358229 الرمز البريدي: 36422 البريد 4374-6619 المبرز 36422',addrEn:['P.O. Box 115 Ain Najm St Salam Square. Al Ahsa','(Ain Najm) Al Mubarraz 36422-NAMA','Nama tower 7th floor, Kingdom of Saudi Arabia'],phone:'+966135822969',mobile:'+966555345893',fax:'+966135820334',email:'info@npi.com.sa',web:'www.npi.com.sa'};
@@ -649,14 +681,14 @@ function contractTokens(p){const t=qTotals(p.quote);const c=p.contract||{};const
     payments:sch.map((m,i)=>`- الدفعة ${ORD[i]||i+1}: وهي مكونة من ${fmt(m.pct)}% من تكلفة العمل الكلية والبالغ قيمتها (${fmt(t.total*N(m.pct)/100)} ${tafqit(t.total*N(m.pct)/100)} ريال) ${trigText(m)}`).join('\n')}}
 function fillTokens(text,p){const k=contractTokens(p);return String(text||'').replace(/\{(\w+)\}/g,(m,x)=>k[x]!=null?k[x]:m)}
 
-/* ============ budget model (matches company estimate sheet) ============ */
+/* ------ budget model (matches company estimate sheet) ------ */
 function bTarget(b){const c=bCost({budget:b}).total;return N(b?.contractValue)>0?N(b.contractValue):r2(c/(1-Math.min(0.9,Math.max(0,N(b?.margin)/100))))}
 function salePrices(b){const ql=(b?.res||[]).filter(l=>l.inQuote!==false&&!l.excluded);const target=bTarget(b);
   const fixed=sum(ql.filter(l=>N(l.price)>0),l=>N(l.qty)*N(l.price));const auto=ql.filter(l=>!(N(l.price)>0));const ac=sum(auto,l=>N(l.qty)*N(l.cost));
   const F=ac>0?Math.max(0,(target-fixed)/ac):0;const m={};ql.forEach(l=>m[l.id]=N(l.price)>0?N(l.price):r2(N(l.cost)*F));return m}
 function matDeliveredPct(p){const ms=(p.budget?.res||[]).filter(r=>r.cat==='material'&&!r.excluded&&r.itemId);const tot=sum(ms,r=>N(r.qty)*N(r.cost));if(!tot)return 0;return sum(ms,r=>Math.min(N(r.qty),resUsage(p,r).received)*N(r.cost))/tot}
 
-/* ============ inbox (derived tasks) ============ */
+/* ------ inbox (derived tasks) ------ */
 function tasks(){
   const t=[];const r=role();const add=(o)=>t.push(o);
   const projs=L('projects');
@@ -711,7 +743,7 @@ function prTotal(x){return r2(sum(x.lines||[],l=>N(l.qty)*N(l.price)))}
 function prGross(x){return r2(prTotal(x)*(N(x.rate)||1)*(x.vat===false?1:1+VAT))}
 const CUR_RATE={SAR:1,USD:3.75,EUR:4.05};
 
-/* ============ routing / render ============ */
+/* ------ routing / render ------ */
 let route='home', ptab='overview', drawer=false;
 function readRoute(){route=(location.hash||'#home').slice(1)||'home'}
 window.addEventListener('hashchange',()=>{readRoute();drawer=false;render();window.scrollTo(0,0)});
@@ -723,7 +755,7 @@ function render(){
   if(!loaded.has('team')){root.dataset.gate='';root.innerHTML='<div class="loading">جارٍ تحميل النظام…</div>';return}
   ME=sessionUser();
   if((!ME||ME.mustChange)&&$('#ai')?.innerHTML)$('#ai').innerHTML='';
-  if(!ME){const key='login';if(root.dataset.gate===key)return;root.dataset.gate=key;root.innerHTML=loginView();setTimeout(()=>root.querySelector('input')?.focus(),30);return}
+  if(!ME){const key=MODE==='server'?(SERVER_SETUP?'setup':'login'):'login';if(root.dataset.gate===key)return;root.dataset.gate=key;root.innerHTML=key==='setup'?setupView():loginView();setTimeout(()=>root.querySelector('input')?.focus(),30);return}
   if(ME.mustChange){if(root.dataset.gate==='force')return;root.dataset.gate='force';root.innerHTML=forceView();return}
   root.dataset.gate='';
   const n=tasks().length+myFtasks('mine').filter(t=>t.status!=='done'&&t.due&&t.due<=today()).length;
@@ -777,7 +809,7 @@ function view(){
   return ({home:homeView,clients:clientsView,pipeline:pipelineView,projects:projectsView,stock:stockView,purchasing:purchasingView,finance:financeView,cycle:cycleView,settings:settingsView,admin:adminView}[route]||homeView)();
 }
 
-/* ============ login ============ */
+/* ------ login ------ */
 function authShell(inner){return `<div class="login"><div class="box"><div class="login-brand">${LOGO}<div class="sunline"></div></div>${inner}<p class="login-foot">شركة الطاقة والصناعة الوطنية • نظام إدارة مشاريع الطاقة الشمسية</p></div></div>`}
 function loginView(){
   return authShell(`<h1>تسجيل الدخول</h1><p>أدخل اسم المستخدم وكلمة المرور التي أعطاك إياها المدير العام.</p>
@@ -789,6 +821,19 @@ function loginView(){
     <div class="auth-err" id="lgErr" role="alert" hidden></div>
     <button class="btn pri big" type="submit">دخول</button>
     <p class="hint" style="margin:0">نسيت كلمة المرور؟ اطلب من المدير العام أو مدير النظام إعادة تعيينها من الإدارة ← المستخدمون.</p>
+  </form>`)}
+function setupView(){
+  const legacy=MODE==='server'&&localSnapshot();
+  const migrate=legacy?`<div class="alert info"><span>${IC.upload}</span><div><b>وجدنا بيانات محفوظة في هذا المتصفح.</b><br>يمكن نسخها إلى قاعدة الشركة مرة واحدة. ستبقى النسخة المحلية كما هي.<label class="check" style="margin-top:10px"><input type="checkbox" id="suImportLocal" checked> استيراد بيانات هذا المتصفح</label></div></div>`:'';
+  return authShell(`<h1>تهيئة النظام</h1><p>أول دخول للنظام. أنشئ حساب المدير العام، ثم أضف بقية الفريق من الإعدادات.</p>
+  <form class="auth" id="setupForm" novalidate>
+    <label class="f">الاسم الكامل<input class="in" id="suName" required></label>
+    <label class="f">اسم المستخدم (بالإنجليزية)<input class="in" id="suUser" dir="ltr" autocomplete="username" required></label>
+    <label class="f">كلمة المرور (8 أحرف على الأقل)<input class="in" id="suPass" type="password" dir="ltr" autocomplete="new-password" required></label>
+    <label class="f">تأكيد كلمة المرور<input class="in" id="suPass2" type="password" dir="ltr" autocomplete="new-password" required></label>
+    ${migrate}
+    <div class="auth-err" id="lgErr" role="alert" hidden></div>
+    <button class="btn pri big" type="submit">إنشاء الحساب والدخول</button>
   </form>`)}
 function forceView(){
   return authShell(`<h1>تعيين كلمة مرور جديدة</h1><p>مرحباً ${esc(ME.name)}. هذه أول مرة تدخل فيها، أو أعاد المدير العام تعيين كلمة مرورك. اختر كلمة مرور خاصة بك.</p>
@@ -802,10 +847,15 @@ function forceView(){
 function authErr(m){const e=$('#lgErr');if(e){e.textContent=m;e.hidden=!m}}
 const pwRule=p=>p.length<8?'كلمة المرور يجب ألا تقل عن 8 أحرف':!/[0-9]/.test(p)||!/[A-Za-z؀-ۿ]/.test(p)?'كلمة المرور يجب أن تحتوي على حروف وأرقام':'';
 document.addEventListener('submit',async e=>{
-  const f=e.target;if(!['loginForm','forceForm'].includes(f.id))return;e.preventDefault();authErr('');
+  const f=e.target;if(!['loginForm','forceForm','setupForm'].includes(f.id))return;e.preventDefault();authErr('');
   if(f.id==='loginForm'){
     if(Date.now()<lockUntil)return authErr(`محاولات كثيرة خاطئة. حاول بعد ${Math.ceil((lockUntil-Date.now())/1000)} ثانية.`);
     const u=$('#lgUser').value.trim().toLowerCase(),p=$('#lgPass').value;if(!u||!p)return authErr('أدخل اسم المستخدم وكلمة المرور');
+    if(MODE==='server'){
+      try{await api('/api/auth/login',{method:'POST',body:JSON.stringify({username:u,password:p})});loginFails=0;await refreshServerStore();location.hash='home';route='home';render()}
+      catch(err){authErr(err.message||'اسم المستخدم أو كلمة المرور غير صحيحة')}
+      return;
+    }
     const m=L('team').find(x=>(x.username||'').toLowerCase()===u);
     const ok=m&&m.passHash&&(await hashPw(m.salt||'',p))===m.passHash;
     if(!ok){loginFails++;if(loginFails>=5){lockUntil=Date.now()+60000;loginFails=0}return authErr('اسم المستخدم أو كلمة المرور غير صحيحة')}
@@ -813,13 +863,36 @@ document.addEventListener('submit',async e=>{
     loginFails=0;SESS={id:m.id,sig:m.passHash.slice(0,16)};sessSave(SESS,$('#lgRemember').checked);meId=m.id;auditLog('login','session',m.id,null,{name:m.name},m);
     put('team',m.id,{...clone(m),lastLogin:nowISO()});location.hash='home';route='home';render();
   }
+  if(f.id==='setupForm'){
+    if(MODE==='server'){
+      if(!SERVER_SETUP)return render();
+      const n=$('#suName').value.trim(),u=$('#suUser').value.trim().toLowerCase(),p=$('#suPass').value,p2=$('#suPass2').value;
+      if(!n||!u)return authErr('أدخل الاسم واسم المستخدم');if(!/^[a-z0-9._-]{3,30}$/.test(u))return authErr('اسم المستخدم: 3 أحرف إنجليزية أو أرقام على الأقل، بدون مسافات');
+      const r=pwRule(p);if(r)return authErr(r);if(p!==p2)return authErr('كلمتا المرور غير متطابقتين');
+      const local=localSnapshot(),importData=local&&$('#suImportLocal')?.checked?local:null;
+      try{await api('/api/auth/setup',{method:'POST',body:JSON.stringify({name:n,username:u,password:p,importData})});await refreshServerStore();location.hash='home';route='home';render()}
+      catch(err){authErr(err.message||'تعذّر تهيئة النظام')}
+      return;
+    }
+    if(L('team').length)return render();
+    const n=$('#suName').value.trim(),u=$('#suUser').value.trim().toLowerCase(),p=$('#suPass').value,p2=$('#suPass2').value;
+    if(!n||!u)return authErr('أدخل الاسم واسم المستخدم');if(!/^[a-z0-9._-]{3,30}$/.test(u))return authErr('اسم المستخدم: 3 أحرف إنجليزية أو أرقام على الأقل، بدون مسافات');
+    const r=pwRule(p);if(r)return authErr(r);if(p!==p2)return authErr('كلمتا المرور غير متطابقتين');
+    const id=uid(),salt=uid();const h=await hashPw(salt,p);await put('team',id,{name:n,username:u,role:'gm',salt,passHash:h,active:true,createdAt:nowISO()});
+    SESS={id,sig:h.slice(0,16)};sessSave(SESS,true);meId=id;render();
+  }
   if(f.id==='forceForm'){
     const p=$('#fcPass').value,p2=$('#fcPass2').value;const r=pwRule(p);if(r)return authErr(r);if(p!==p2)return authErr('كلمتا المرور غير متطابقتين');
+    if(MODE==='server'){
+      try{await api('/api/auth/password',{method:'POST',body:JSON.stringify({password:p})});await refreshServerStore();toast('تم حفظ كلمة المرور');render()}
+      catch(err){authErr(err.message||'تعذّر حفظ كلمة المرور')}
+      return;
+    }
     const salt=uid();const h=await hashPw(salt,p);const m={...clone(ME),salt,passHash:h,mustChange:false,pwChangedAt:nowISO()};SESS={id:m.id,sig:h.slice(0,16)};sessSave(SESS,true);await put('team',m.id,m);toast('تم حفظ كلمة المرور');render();
   }
 });
 
-/* ============ HOME ============ */
+/* ------ HOME ------ */
 function homeView(){
   const t=tasks();const r=role();
   const projs=L('projects');
@@ -854,7 +927,7 @@ function homeView(){
 function taskRow(x){const a=x.go?`data-act="nav" data-r="${x.go}" data-tab="${x.tab||''}"`:`data-act="${x.act}" data-id="${x.id}" ${x.ms?`data-ms="${x.ms}"`:''}`;
   return `<div class="task"><div class="ic ${x.tone||''}">${IC[x.ic]||IC.doc}</div><div class="tx"><b>${esc(x.title)}</b><span>${esc(x.sub||'')}</span></div><button class="btn sm ${x.tone==='bad'||x.tone==='warn'?'pri':''}" ${a}>${x.btn||'فتح'}</button></div>`}
 
-/* ============ PIPELINE ============ */
+/* ------ PIPELINE ------ */
 function pipelineView(){
   const cols=[['lead','تفاوض'],['study','فرصة ودراسة'],['budget','موازنة'],['budget_review','بانتظار الاعتماد'],['quote','عرض سعر'],['contract_review','عقد']];
   const ps=fPipeline(L('projects'));
@@ -865,7 +938,7 @@ function pipelineView(){
   ${lost.length?`<div class="card mt"><div class="hd"><h3>فرص مغلقة دون تعاقد</h3><span class="pill">${lost.length}</span></div><div class="bd flush"><div class="tw"><table><thead><tr><th>الفرصة</th><th>العميل</th><th>السبب</th><th>التاريخ</th></tr></thead><tbody>${lost.map(p=>`<tr class="click" data-act="nav" data-r="project-${p.id}"><td>${esc(p.name)}</td><td>${esc(p.client?.name)}</td><td>${esc(p.lostReason||'—')}</td><td>${fdate(p.lostAt)}</td></tr>`).join('')}</tbody></table></div></div></div>`:''}`;
 }
 
-/* ============ PROJECTS LIST ============ */
+/* ------ PROJECTS LIST ------ */
 let pfilter='active';
 function projectsView(){
   let ps=myProjects();
@@ -883,7 +956,7 @@ function projectsView(){
   ${ps.length?'':`<div class="empty"><b>لا توجد مشاريع في هذا التصنيف</b>${is('pgm')?'ابدأ بإضافة عميل محتمل.':''}</div>`}</div>`;
 }
 
-/* ============ PROJECT ============ */
+/* ------ PROJECT ------ */
 function projectView(id){
   const p=P(id);
   if(!p)return `<div class="empty"><b>المشروع غير موجود</b><a href="#projects">العودة للمشاريع</a></div>`;
@@ -1051,7 +1124,7 @@ function pHandover(p){
   if(!h)return `<div class="card"><div class="empty"><b>لم يُقدَّم التسليم بعد</b>عند انتهاء الأعمال يرفع مهندس المشروع محضر تسليم الموقع مع الصور ومستندات استلام العميل.${is('eng')&&p.setup?.engineerId===ME.id&&p.stage==='execution'?`<div class="mt"><button class="btn pri" data-act="submitHandover" data-id="${p.id}">إثبات انتهاء الأعمال</button></div>`:''}</div></div>`;
   return `<div class="card"><div class="hd"><h3>محضر تسليم موقع</h3>${stagePill(p)}<div class="acts"><button class="btn sm pri" data-act="doc" data-k="handover" data-id="${p.id}">محضر التسليم PDF</button></div></div><div class="bd stack"><dl class="dl"><dt>تاريخ التسليم</dt><dd>يوم ${dayAr(h.date)} ${dslash(h.date)}</dd><dt>المستلم من طرف العميل</dt><dd>${esc(h.receiver||p.client?.name||'—')}</dd><dt>الغرض</dt><dd>${esc(h.purpose||p.study?.purpose||'—')}</dd><dt>ما تم تأكيده</dt><dd>${(h.checks||[]).filter(x=>x.ok!==false).map(x=>'✓ '+esc(x.text)).join('<br>')||'—'}</dd>${money()?`<dt>الدفعة المحجوزة</dt><dd>${esc(h.retained||'لا يوجد')}</dd>`:''}<dt>ملاحظات</dt><dd>${esc(h.notes||'—')}</dd><dt>الإنجاز عند التسليم</dt><dd>${pct(progress(p))}</dd>${h.pgmAt?`<dt>اعتماد مدير المشاريع</dt><dd>${fdate(h.pgmAt)}</dd>`:''}${h.gmAt?`<dt>اعتماد الإغلاق</dt><dd>${fdate(h.gmAt)}</dd>`:''}</dl><div><div class="sec-t">صور انتهاء الأعمال</div>${files(h.photos)||'<span class="faint">—</span>'}</div><div><div class="sec-t">مستندات استلام العميل</div>${files(h.docs)||'<span class="faint">—</span>'}</div></div></div>`;
 }
-/* ============ STOCK ============ */
+/* ------ STOCK ------ */
 let stab='balances';
 function stockView(){
   const items=fBal();
@@ -1076,7 +1149,7 @@ function stockView(){
 }
 const grnPill=x=>({pgm:'<span class="pill warn">بانتظار اعتماد مدير المشاريع</span>',fin:'<span class="pill info">لدى المالية لإصدار الفاتورة</span>',invoiced:'<span class="pill ok">مفوتر</span>'}[x.status]);
 
-/* ============ PURCHASING ============ */
+/* ------ PURCHASING ------ */
 function purchasingView(){
   const prs=fPRs();
   const st=x=>({pgm:['مدير المشاريع: المورد والأسعار','warn'],fin:['المالية: مطابقة حساب المورد','warn'],gm:['المدير العام: الاعتماد النهائي','warn'],po:['أمر شراء صادر','info'],partial:['استلام جزئي','info'],received:['مستلم بالكامل','ok'],rejected:['مرفوض','bad']}[x.status]||['','plain']);
@@ -1089,7 +1162,7 @@ function purchasingView(){
   ${prs.length?'':'<div class="empty"><b>لا توجد طلبات شراء</b>ينشئها أمين المستودع عند عدم توفر المواد المطلوبة.</div>'}</div>`;
 }
 
-/* ============ FINANCE ============ */
+/* ------ FINANCE ------ */
 let ftab='claims';
 function financeView(){
   const projs=L('projects');
@@ -1112,7 +1185,7 @@ function financeView(){
   <div class="tabs">${tabs.map(([k,t])=>`<button class="${ftab===k?'on':''}" data-act="ftab" data-k="${k}">${t}</button>`).join('')}</div>${body}`;
 }
 
-/* ============ CYCLE MAP ============ */
+/* ------ CYCLE MAP ------ */
 function cycleView(){
   const ps=L('projects');const c=k=>ps.filter(p=>p.stage===k).length;
   const ph=[['مرحلة ما قبل التعاقد والترسية',[
@@ -1140,21 +1213,21 @@ function cycleView(){
   <div class="phase">المستخدمون والأدوار</div><div class="cyc">${Object.entries(ROLES).map(([k,v])=>`<div class="c"><b>${v.ar}</b><p>${v.d}</p><span class="faint" style="font-size:12px">${L('team').filter(m=>m.role===k).map(m=>esc(m.name)).join('، ')||'لا يوجد مستخدم'}</span></div>`).join('')}</div>`;
 }
 
-/* ============ PROFILE ============ */
+/* ------ PROFILE ------ */
 function profileView(){const m=ME;return `<div class="ph"><div><h1>حسابي</h1><div class="sub">بياناتك وكلمة المرور</div></div><div class="acts"><button class="btn bad" data-act="logout">${IC.out} تسجيل الخروج</button></div></div>
   <div class="grid g2"><div class="card"><div class="bd stack"><div class="prof"><div class="avatar">${esc(ini(m.name))}</div><div><h2 style="font-size:19px">${esc(m.name)}</h2><span class="pill acc">${roleName(m.role)}</span></div></div>
   <dl class="dl"><dt>اسم المستخدم</dt><dd dir="ltr" style="text-align:right">${esc(m.username||'—')}</dd><dt>الجوال</dt><dd dir="ltr" style="text-align:right">${esc(m.phone||'—')}</dd><dt>البريد</dt><dd>${esc(m.email||'—')}</dd><dt>آخر دخول</dt><dd>${ftime(m.lastLogin)||'—'}</dd><dt>تغيير كلمة المرور</dt><dd>${m.pwChangedAt?fdate(m.pwChangedAt):'—'}</dd></dl>
   <div class="row"><button class="btn" data-act="editProfile">تعديل بياناتي</button><button class="btn pri" data-act="changePw">تغيير كلمة المرور</button></div></div></div>
   <div class="card"><div class="hd"><h3>صلاحيات دورك</h3></div><div class="bd"><p style="margin:0 0 10px">${(roleDef(m.role).desc||'')}</p><div class="hint">الصفحات المتاحة: ${navFor().filter(x=>x.t).map(x=>x.t).join('، ')}</div>${money()?'':'<div class="hint mt">لا تظهر لدورك القيم المالية (الأسعار، العقود، المستخلصات، الأرباح).</div>'}</div></div></div>`}
 A.editProfile=()=>openSheet({title:'تعديل بياناتي',draft:{name:ME.name,phone:ME.phone||'',email:ME.email||''},body:x=>`<div class="fg">${fld('الاسم','name',x,{full:true})}${fld('الجوال','phone',x,{type:'tel'})}${fld('البريد','email',x,{type:'email'})}</div>`,actions:[{label:'حفظ',fn:async x=>{if(!x.name)return shErr('أدخل الاسم');await put('team',ME.id,{...clone(ME),...x});return'تم الحفظ'}}]});
-A.changePw=()=>openSheet({title:'تغيير كلمة المرور',draft:{},body:x=>`<div class="fg">${fld('كلمة المرور الحالية','cur',x,{type:'password',full:true})}${fld('الجديدة (8 أحرف وأرقام)','p1',x,{type:'password'})}${fld('تأكيد الجديدة','p2',x,{type:'password'})}</div>`,actions:[{label:'حفظ',fn:async x=>{if((await hashPw(ME.salt||'',x.cur||''))!==ME.passHash)return shErr('كلمة المرور الحالية غير صحيحة');const r=pwRule(x.p1||'');if(r)return shErr(r);if(x.p1!==x.p2)return shErr('كلمتا المرور غير متطابقتين');const salt=uid();const h=await hashPw(salt,x.p1);SESS={id:ME.id,sig:h.slice(0,16)};sessSave(SESS,true);await put('team',ME.id,{...clone(ME),salt,passHash:h,pwChangedAt:nowISO()});return'تم تغيير كلمة المرور'}}]});
+A.changePw=()=>openSheet({title:'تغيير كلمة المرور',draft:{},body:x=>`<div class="fg">${fld('كلمة المرور الحالية','cur',x,{type:'password',full:true})}${fld('الجديدة (8 أحرف وأرقام)','p1',x,{type:'password'})}${fld('تأكيد الجديدة','p2',x,{type:'password'})}</div>`,actions:[{label:'حفظ',fn:async x=>{if(MODE!=='server'&&(await hashPw(ME.salt||'',x.cur||''))!==ME.passHash)return shErr('كلمة المرور الحالية غير صحيحة');const r=pwRule(x.p1||'');if(r)return shErr(r);if(x.p1!==x.p2)return shErr('كلمتا المرور غير متطابقتين');if(MODE==='server'){try{await api('/api/auth/password',{method:'POST',body:JSON.stringify({currentPassword:x.cur,newPassword:x.p1})});await refreshServerStore();return'تم تغيير كلمة المرور'}catch(err){return shErr(err.message||'تعذّر تغيير كلمة المرور')}}const salt=uid();const h=await hashPw(salt,x.p1);SESS={id:ME.id,sig:h.slice(0,16)};sessSave(SESS,true);await put('team',ME.id,{...clone(ME),salt,passHash:h,pwChangedAt:nowISO()});return'تم تغيير كلمة المرور'}}]});
 function canDelLog(p,d){return is('eng')&&d.by===ME.id&&p.stage==='execution'&&(Date.now()-new Date(d.at||0).getTime())<3*864e5}
 A.delLog=d=>{const g=S.dlogs[d.id];openSheet({title:'حذف تسجيل يومي',draft:{},body:()=>`<div class="alert warn"><span>${IC.alert}</span><div>سيُحذف تسجيل ${g.kind==='work'?'الإنجاز':'العمالة'} ليوم ${fdate(g.date)} ويُعاد احتساب الإنجاز التراكمي. يُسمح بالحذف خلال 3 أيام من التسجيل فقط.</div></div>`,actions:[{label:'حذف',cls:'bad',fn:async()=>{await del('dlogs',g.id);const q=pc(g.project);plog(q,`حذف تسجيل ${g.kind==='work'?'إنجاز':'عمالة'} يوم ${g.date}`);await saveP(q);return'حُذف التسجيل'}}]})};
 A.reopenLead=async d=>{const q=pc(d.id);q.stage='lead';q.neg='negotiating';plog(q,'إعادة فتح الفرصة للتفاوض');await saveP(q,'أعيد فتح الفرصة')};
 A.newTransfer=()=>{const sites=L('projects').filter(p=>p.stage==='execution');const items=L('items');
   openSheet({title:'تحويل مواد بين المواقع',wide:true,redrawOnSelect:true,draft:{from:'MAIN',to:sites[0]?.id||'',q:{}},body:x=>{const its=items.filter(it=>availAt(x.from,it.id)>0);return `<div class="fg">${fld('من','from',x,{type:'select',options:[['MAIN','المستودع الرئيسي'],...sites.map(p=>['P:'+p.id,'موقع: '+p.name])]})}${fld('إلى موقع','to',x,{type:'select',options:sites.map(p=>[p.id,p.name])})}</div><div class="hint">يؤكد مهندس المشروع المستلم الاستلام، وعندها تنتقل الكميات بين الرصيدين. للإرجاع للمستودع الرئيسي استخدم «مرتجع مواد» من ملف المشروع.</div>${its.length?`<div class="tw"><table><thead><tr><th>الصنف</th><th class="n">المتاح</th><th class="n">كمية التحويل</th></tr></thead><tbody>${its.map(it=>`<tr><td>${esc(it.name)}</td><td class="n">${fmt(availAt(x.from,it.id))}</td><td class="n"><input class="in sm qty" data-num="1" data-k="q.${it.id}" value="${esc(x.q[it.id]??'')}" placeholder="0"></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">لا يوجد رصيد متاح في هذا الموقع</div>'}${fld('ملاحظات','note',x,{type:'textarea'})}`},
   actions:[{label:'إصدار إذن التحويل',fn:async x=>{if(!x.to)return shErr('اختر الموقع المستلم');if(x.from==='P:'+x.to)return shErr('لا يمكن التحويل لنفس الموقع');const lines=items.filter(it=>N(x.q[it.id])>0).map(it=>({itemId:it.id,qty:N(x.q[it.id])}));if(!lines.length)return shErr('أدخل كمية');if(lines.some(l=>l.qty>availAt(x.from,l.itemId)+1e-9))return shErr('الكمية أكبر من المتاح');await put('issues',uid(),{code:nextCode('TR','issues'),from:x.from,project:x.to,lines,note:x.note||'',status:'sent',by:ME.id,at:nowISO()});return'صدر إذن التحويل — بانتظار تأكيد المهندس'}}]})};
-/* ============ PDF engine (canvas layout -> image PDF, works on every browser) ============ */
+/* ------ PDF engine (canvas layout -> image PDF, works on every browser) ------ */
 const PG={W:794,H:1123,M:52};
 const FONT=(w,s)=>`${w} ${s}px "IBM Plex Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif`;
 let LOGO_P=null;
@@ -1321,7 +1394,7 @@ function pDocs(p){const si=SIDX[p.stage]??-1;const L2=[];const add=(t,k,id,x,sub
   if(p.handover)add('محضر تسليم موقع','handover',p.id,'',fdate(p.handover.date));
   const att=[...(p.study?.files||[]),...(p.quote?.approvalFiles||[]),...(p.handover?.photos||[]),...(p.handover?.docs||[])];
   return `<div class="stack"><div class="card"><div class="hd"><h3>نماذج ومستندات المشروع</h3><span class="hint">تُولَّد من بيانات النظام بصيغة PDF وبنفس نماذج الشركة</span></div><div class="bd flush">${L2.join('')||'<div class="empty">لا توجد مستندات بعد</div>'}</div></div>${att.length?`<div class="card"><div class="hd"><h3>المرفقات</h3></div><div class="bd">${files(att)}</div></div>`:''}</div>`}
-/* ============ data tools: filters, Excel/CSV export & import ============ */
+/* ------ data tools: filters, Excel/CSV export & import ------ */
 let FL=(()=>{try{return JSON.parse(localStorage.getItem('npi-flt')||'{}')}catch(e){return{}}})();
 const fl=k=>FL[k]||(FL[k]={});
 function saveFL(){try{localStorage.setItem('npi-flt',JSON.stringify(FL))}catch(e){}}
@@ -1355,7 +1428,7 @@ function fClaims(){const f=fl('claims');return L('claims').filter(c=>qm(f.q,c.in
 function fSupp(){const f=fl('supp');return L('grns').filter(g=>g.status!=='pgm').filter(g=>qm(f.q,g.code,g.invoice?.no,supplier(g.supplierId)?.name)&&(!f.st||(f.st==='none'?!g.invoice:f.st==='open'?g.invoice&&g.invoice.total-grnPaid(g)>0.5:g.invoice&&g.invoice.total-grnPaid(g)<=0.5))&&inR(g.date,f.from,f.to)).sort((a,b)=>(b.date||'').localeCompare(a.date||''))}
 function fSpay(){const f=fl('spay');return L('spay').filter(x=>qm(f.q,supplier(x.supplierId)?.name,x.purpose,x.ref)&&(!f.st||x.status===f.st)).sort((a,b)=>(b.at||'').localeCompare(a.at||''))}
 function fSuppliers(){const f=fl('suppliers');return L('suppliers').filter(s=>qm(f.q,s.name,s.email,s.vat,s.phone))}
-function fTeam(){const f=fl('team');return L('team').filter(m=>qm(f.q,m.name,m.username,m.phone)&&(!f.role||m.role===f.role)&&(!f.st||(f.st==='off'?m.active===false:f.st==='first'?m.active!==false&&(m.mustChange||!m.passHash):m.active!==false&&m.passHash&&!m.mustChange)))}
+function fTeam(){const f=fl('team');return L('team').filter(m=>qm(f.q,m.name,m.username,m.phone)&&(!f.role||m.role===f.role)&&(!f.st||(f.st==='off'?m.active===false:f.st==='first'?m.active!==false&&m.mustChange:m.active!==false&&!m.mustChange)))}
 const STATUS_PR={pgm:'لدى مدير المشاريع',fin:'لدى المالية',gm:'لدى المدير العام',po:'أمر شراء صادر',partial:'استلام جزئي',received:'مستلم',rejected:'مرفوض'};
 const STATUS_GRN={pgm:'بانتظار مدير المشاريع',fin:'لدى المالية',invoiced:'مفوتر'};
 const STATUS_CL={issued:'صادر',partial:'تحصيل جزئي',paid:'محصّل'};
@@ -1512,7 +1585,7 @@ async function upsertClient(c,clientId){const keys=['name','phone','address','si
 A.stockAdjust=()=>{const its=fItems();openSheet({title:'تسوية جرد المستودع الرئيسي',draft:{itemId:its[0]?.id||'',count:'',reason:''},redrawOnSelect:true,body:x=>`<div class="fg">${fld('الصنف','itemId',x,{type:'select',full:true,options:its.map(i=>[i.id,`${i.code} — ${i.name}`])})}<label class="f">الرصيد بالنظام<input class="in" readonly value="${fmt(bal('MAIN',x.itemId))} ${esc(item(x.itemId)?.unit||'')}"></label>${fld('الرصيد الفعلي بعد الجرد *','count',x,{type:'number'})}${fld('السبب / ملاحظات الجرد *','reason',x,{type:'textarea'})}</div><div class="hint">تُسجَّل الفروقات كحركة «تسوية جرد» في سجل حركة المواد. للجرد الكامل استخدم الاستيراد من Excel.</div>`,
   actions:[{label:'تسجيل التسوية',fn:async x=>{if(x.count===''||N(x.count)<0)return shErr('أدخل الرصيد الفعلي');if(!x.reason)return shErr('اكتب سبب التسوية');const diff=r2(N(x.count)-bal('MAIN',x.itemId));if(!diff)return'لا يوجد فرق';await put('moves',uid(),{itemId:x.itemId,qty:Math.abs(diff),from:diff>0?'SUP':'MAIN',to:diff>0?'MAIN':'ADJ',kind:'adj',ref:'جرد: '+x.reason,cost:item(x.itemId)?.cost||0,at:nowISO(),by:ME.id});return`سُجلت تسوية ${diff>0?'+':''}${fmt(diff)}`}}]})};
 
-/* ============ administration: roles & permissions, approval matrix, organisation, audit ============ */
+/* ------ administration: roles & permissions, approval matrix, organisation, audit ------ */
 const PERMS=[
  ['الشاشات',[['view.dashboard','لوحة المعلومات الكاملة (المؤشرات المالية والتشغيلية)'],['view.pipeline','العملاء المحتملون والفرص'],['view.clients','العملاء'],['projects.all','كل المشاريع (وليس المسندة إليه فقط)'],['view.stock','المستودع والمواد'],['view.purchasing','المشتريات'],['view.finance','المالية والتحصيل'],['view.settings','الإعدادات والنماذج']]],
  ['البيانات والعمليات',[['see.money','رؤية الأسعار والعقود والتكاليف والأرباح'],['clients.manage','إضافة وتعديل العملاء'],['items.manage','إضافة وتعديل الأصناف'],['suppliers.manage','إضافة وتعديل الموردين'],['templates.manage','نماذج الموازنة والعقد والعرض'],['tasks.assign','إنشاء أوامر عمل ومهام متابعة للآخرين'],['data.import','الاستيراد من Excel'],['data.export','التصدير إلى Excel']]],
@@ -1549,7 +1622,7 @@ function adiff(b,a){const ks=new Set([...Object.keys(b||{}),...Object.keys(a||{}
   const sv=v=>v==null||v===''?'—':typeof v==='object'?'(تفاصيل)':k==='stage'?(STAGE_AR[v]||v):k==='role'?roleName(v):typeof v==='boolean'?(v?'نعم':'لا'):String(v).slice(0,60);out.push([FIELD_AR[k]||k,sv(x),sv(y)])});return out.slice(0,10)}
 function alabel(col,d,id){if(!d)return id;if(col==='meta')return({company:'بيانات الشركة',contractTpl:'نموذج العقد',roles:'الأدوار والصلاحيات',matrix:'مصفوفة الاعتماد',org:'الترقيم'})[id]||id;if(col==='moves')return`${KIND_AR[d.kind]||d.kind}: ${item(d.itemId)?.name||''} × ${fmt(d.qty)}`;if(col==='dlogs')return`${P(d.project)?.name||''} — ${d.date}`;return[d.code||d.poNo||d.invoiceNo||'',d.name||d.title||d.label||(d.project&&P(d.project)?.name)||''].filter(Boolean).join(' — ')||id}
 function auditLog(a,col,id,before,after,user){const u=user||ME;if(!u||col==='audit')return;const f=a==='update'?adiff(before,after):[];if(a==='update'&&!f.length)return;AUD.push({t:nowISO(),u:u.id,n:u.name,a,c:col,id,l:alabel(col,after||before,id),f});clearTimeout(audT);audT=setTimeout(flushAudit,1200)}
-async function flushAudit(){if(!AUD.length)return;const batch=AUD;AUD=[];const byU={};batch.forEach(e=>(byU[e.u]=byU[e.u]||[]).push(e));
+async function flushAudit(){if(MODE==='server'){AUD=[];return}if(!AUD.length)return;const batch=AUD;AUD=[];const byU={};batch.forEach(e=>(byU[e.u]=byU[e.u]||[]).push(e));
   for(const [u,es] of Object.entries(byU)){let k=today()+'_'+u,i=0;while(S.audit[k]&&(S.audit[k].e||[]).length>=300){i++;k=today()+'_'+u+'_'+i}await put('audit',k,{d:today(),u,e:[...(S.audit[k]?.e||[]),...es]})}}
 window.addEventListener('pagehide',()=>{flushAudit()});
 function fAudit(){const f=fl('audit');return L('audit').flatMap(d=>d.e||[]).filter(e=>qm(f.q,e.l,e.n,...(e.f||[]).flat())&&(!f.u||e.u===f.u)&&(!f.c||e.c===f.c)&&(!f.a||e.a===f.a)&&inR(e.t,f.from,f.to)).sort((a,b)=>b.t.localeCompare(a.t))}
@@ -1577,7 +1650,7 @@ function adminView(){const tabs=[['users','المستخدمون','admin.users'],
    `<div class="card"><div class="tw"><table><thead><tr><th>الوقت</th><th>المستخدم</th><th>العملية</th><th>القسم</th><th>السجل</th><th>التغييرات</th></tr></thead><tbody>${es.slice(0,400).map(e=>`<tr><td class="num" style="white-space:nowrap">${fdate(e.t)} ${ftime(e.t).split(' ')[1]||''}</td><td>${esc(e.n)}</td><td><span class="pill ${e.a==='delete'?'bad':e.a==='create'?'ok':e.a==='update'?'info':'plain'}">${ACT_AR[e.a]||e.a}</span></td><td>${COL_AR[e.c]||e.c}</td><td>${esc(e.l)}</td><td style="font-size:12.5px">${(e.f||[]).map(x=>`<div><b>${esc(x[0])}</b>: <span class="faint">${esc(x[1])}</span> ← ${esc(x[2])}</div>`).join('')}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">لا توجد عمليات مسجلة بهذه الفلاتر</td></tr>'}</tbody></table></div>${es.length>400?'<div class="hint" style="padding:10px 16px">يعرض أحدث 400 عملية — استخدم التصدير لكامل السجل.</div>':''}</div>`}
   return `<div class="ph"><div><h1>الإدارة</h1><div class="sub">المستخدمون، الأدوار والصلاحيات، مصفوفة الاعتماد، بيانات المنشأة، وسجل التدقيق</div></div></div><div class="tabs">${tabs.map(([k,t])=>`<button class="${atab===k?'on':''}" data-act="atab" data-k="${k}">${t}</button>`).join('')}</div>${b||'<div class="empty">لا تملك صلاحيات إدارية</div>'}`}
 A.atab=d=>{atab=d.k;render()};
-const userPill=m=>m.active===false?'<span class="pill bad">موقوف</span>':!m.passHash?'<span class="pill warn">بدون كلمة مرور</span>':m.mustChange?'<span class="pill info">بانتظار تغيير كلمة المرور</span>':'<span class="pill ok">نشط</span>';
+const userPill=m=>m.active===false?'<span class="pill bad">موقوف</span>':m.mustChange?'<span class="pill info">بانتظار تغيير كلمة المرور</span>':'<span class="pill ok">نشط</span>';
 function pendingOf(k){const ps=L('projects');return({budget:ps.filter(p=>p.stage==='budget_review').length,contract:ps.filter(p=>p.stage==='contract_review').length,plan:ps.filter(p=>p.stage==='planning'&&p.plan?.status==='submitted').length,mreq:L('mreqs').filter(x=>x.status==='pgm').length,prPgm:L('prs').filter(x=>x.status==='pgm').length,prFin:L('prs').filter(x=>x.status==='fin').length,prGm:L('prs').filter(x=>x.status==='gm').length,siteGrn:L('grns').filter(x=>x.status==='pgm').length,overPgm:L('overruns').filter(x=>x.status==='pgm').length,overGm:L('overruns').filter(x=>x.status==='gm').length,spay:L('spay').filter(x=>x.status==='gm').length,handover:ps.filter(p=>p.stage==='handover_review').length,close:ps.filter(p=>p.stage==='close_review').length})[k]}
 A.editRole=d=>{if(!perm('admin.roles'))return toast('لا تملك صلاحية تعديل الأدوار');const r=d.id?clone(roleDef(d.id)):{name:'',base:'eng',desc:'',perms:[...DEF_PERMS.eng],custom:true};const isNew=!d.id;
   openSheet({title:isNew?'دور جديد':'الدور: '+esc(r.name),wide:true,draft:{...r,pm:Object.fromEntries(ALLP.map(p=>[p.replace('.','_'),r.perms.includes(p)]))},redrawOnSelect:true,
@@ -1595,7 +1668,7 @@ A.editMatrix=()=>{if(!perm('admin.matrix'))return toast('لا تملك صلاح�
   actions:[{label:'حفظ المصفوفة',fn:async x=>{const steps={};for(const [k,t] of STEPS){steps[k]=R.map(r=>r.key).filter(rk=>x.st[k][rk]);if(!steps[k].length)return shErr('يجب تحديد معتمد واحد على الأقل لخطوة: '+t)}await put('meta','matrix',{steps,prGmAbove:N(x.prGmAbove),spayGmAbove:N(x.spayGmAbove),overGmAbovePct:N(x.overGmAbovePct)});return'تم حفظ مصفوفة الاعتماد'}}]})};
 A.editPrefixes=()=>{if(!perm('admin.org'))return;const px={...DEF_PFX,...(S.meta?.org?.prefixes||{})};openSheet({title:'ترقيم المستندات',draft:{px},body:x=>`<div class="fg">${Object.keys(DEF_PFX).map(k=>fld(PFX_AR[k],'px.'+k,x)).join('')}</div><div class="hint">تُطبَّق البادئة الجديدة على المستندات الجديدة فقط. الصيغة: البادئة-السنة-الرقم. بداية ترقيم عروض الأسعار تُعدل من الإعدادات ← نموذج العقد والعرض.</div>`,actions:[{label:'حفظ',fn:async x=>{for(const k of Object.keys(DEF_PFX)){if(!/^[A-Za-z0-9؀-ۿ]{1,8}$/.test(String(x.px[k]||'').trim()))return shErr('البادئة يجب أن تكون حروفاً أو أرقاماً بدون مسافات (حتى 8 خانات): '+PFX_AR[k])}await put('meta','org',{...(S.meta?.org||{}),prefixes:Object.fromEntries(Object.keys(DEF_PFX).map(k=>[k,String(x.px[k]).trim()]))});return'تم حفظ الترقيم'}}]})};
 
-/* ============ follow-up tasks & work orders ============ */
+/* ------ follow-up tasks & work orders ------ */
 const FT_TYPES={followup:'متابعة',workorder:'أمر عمل',collection:'متابعة تحصيل',visit:'زيارة موقع',other:'أخرى'};
 const FT_PRI={high:['عالية','bad'],normal:['عادية','info'],low:['منخفضة','plain']};
 const FT_ST={open:['مفتوحة','acc'],doing:['قيد التنفيذ','info'],done:['منجزة','ok']};
@@ -1619,7 +1692,7 @@ A.ftEdit=d=>{const t=S.ftasks[d.id];if(t)ftSheet(clone(t),false)};
 A.newWorkOrder=()=>{const eng=L('team').find(m=>m.role==='eng'&&m.active!==false);ftSheet({type:'workorder',priority:'normal',assignee:perm('tasks.assign')?(eng?.id||ME.id):ME.id,due:today(),project:'',title:'',notes:''},true)};
 A.newOpp=()=>A.newLead({opp:true});
 
-/* ============ dashboard ============ */
+/* ------ dashboard ------ */
 function dashActions(){const a=[];const add=(act,ic,t,s,extra='')=>a.push(`<button class="qa" data-act="${act}" ${extra}><span class="qa-ic">${IC[ic]}</span><b>${t}</b><span>${s}</span></button>`);
   if(is('pgm','gm'))add('newLead','user','عميل محتمل جديد','بدء التفاوض');
   if(perm('clients.manage'))add('editClient','users','عميل جديد','سجل العملاء');
@@ -1642,7 +1715,7 @@ function dashBoard(){if(!perm('view.dashboard')||!money())return'';const ps=L('p
 
 function projTasks(p){const ts=L('ftasks').filter(t=>t.project===p.id&&t.status!=='done').sort((a,b)=>String(a.due||'9').localeCompare(String(b.due||'9')));if(!ts.length)return'';return`<div class="card"><div class="hd"><h3>مهام المتابعة وأوامر العمل</h3><span class="pill ${ts.some(ftOverdue)?'bad':'plain'}">${ts.length}</span><div class="acts"><button class="btn sm" data-act="ftNew" data-project="${p.id}">${IC.plus} مهمة</button></div></div><div class="bd flush">${ts.slice(0,8).map(ftRow).join('')}</div></div>`}
 
-/* ============ AI assistant (acts with the signed-in user's permissions; every write needs confirmation) ============ */
+/* ------ AI assistant (acts with the signed-in user's permissions; every write needs confirmation) ------ */
 let SAMPLE=null,AI_CAPS=null,CHAT=[],AI_BUSY=false,AI_CTL=null,AI_ACT={},AI_OPEN=false,AI_IMGS=[],AI_STREAM='';
 async function aiInit(){try{if((location.protocol==='file:'||E2E_MODE)&&window.__npiFakeSample)SAMPLE=window.__npiFakeSample;else if(window.claude?.use)SAMPLE=await window.claude.use('sample')}catch(e){SAMPLE=null}
   try{AI_CAPS=SAMPLE&&SAMPLE.limits?await SAMPLE.limits():{tools:{maxCount:20}}}catch(e){AI_CAPS={tools:{maxCount:20}}}aiDraw()}
@@ -1760,7 +1833,7 @@ A.aiMic=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;c
 
 function aiReset(){CHAT=[];AI_ACT={};AI_OPEN=false;AI_IMGS=[];try{AI_CTL?.abort()}catch(e){}const el=$('#ai');if(el)el.innerHTML=''}
 
-/* ============ SETTINGS ============ */
+/* ------ SETTINGS ------ */
 let settab='ctpl';
 function settingsView(){
   const tabs=[['ctpl','نموذج العقد والعرض'],['templates','نماذج الموازنة'],['items','الأصناف'],['suppliers','الموردون'],['data','البيانات']];
@@ -1779,7 +1852,7 @@ function grnPending(g){return sum(L('spay').filter(x=>x.grnId===g.id&&(x.status=
 function itemsTable(){const its=fItems();return `<div class="card"><div class="tw"><table><thead><tr><th>الكود</th><th>الصنف</th><th>الوحدة</th>${money()?'<th class="n">التكلفة المرجعية</th>':''}<th>بند المقايسة</th><th>تتبع تسلسلي</th><th class="n">رصيد المستودع</th><th></th></tr></thead><tbody>${its.map(i=>`<tr><td class="faint">${esc(i.code)}</td><td>${esc(i.name)}</td><td>${esc(i.unit)}</td>${money()?`<td class="n">${fmt(i.cost,2)}</td>`:''}<td>${CODE_AR[i.boqCode]||'—'}</td><td>${i.serial?'نعم':'—'}</td><td class="n">${fmt(bal('MAIN',i.id))}</td><td>${perm('items.manage')?`<button class="btn sm" data-act="editItem" data-id="${i.id}">تعديل</button>`:''}</td></tr>`).join('')||'<tr><td colspan="8" class="empty">لا توجد أصناف</td></tr>'}</tbody></table></div></div>`}
 function supplierDue(sid){return r2(sum(L('grns').filter(g=>g.supplierId===sid&&g.invoice),g=>N(g.invoice.total)-grnPaid(g))-spayPaid(x=>x.supplierId===sid&&!x.grnId))}
 
-/* ============ SHEET ============ */
+/* ------ SHEET ------ */
 let SH=null;
 function openSheet(o){SH=o;o.draft=o.draft||{};o.err='';drawSheet()}
 function closeSheet(){SH=null;drawSheet()}
@@ -1809,10 +1882,10 @@ document.addEventListener('change',async e=>{const t=e.target;
     toast('جارٍ رفع الملفات…');for(const f of fs){try{if(f.size>20*1024*1024){toast('الملف أكبر من 20 ميجابايت');continue}const r=await ASSETS.upload(f);const arr=getPath(SH.draft,k)||[];arr.push({id:r.id,type:r.contentType,name:f.name});setPath(SH.draft,k,arr)}catch(err){toast(err?.code==='unsupported_type'?'نوع الملف غير مدعوم':'تعذّر رفع الملف')}}redraw();toast('تم الإرفاق')}
 });
 
-/* ============ toast ============ */
+/* ------ toast ------ */
 let tt;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,2600)}
 
-/* ============ ACTIONS ============ */
+/* ------ ACTIONS ------ */
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]');if(!el)return;
   const a=el.dataset.act;if(a==='noop')return;
@@ -1824,9 +1897,9 @@ A.nav=d=>{if(d.ftab)ftab=d.ftab;go(d.r,d.tab||null)};
 A.drawer=()=>{drawer=!drawer;render()};
 A.ptab=d=>{ptab=d.k;render()};A.stab=d=>{stab=d.k;render()};A.ftab=d=>{ftab=d.k;render()};A.settab=d=>{settab=d.k;render()};A.pfilter=d=>{pfilter=d.k;render()};
 A.closeSheet=()=>closeSheet();
-A.shAct=async d=>{const a=SH?.actions?.[+d.i];if(!a)return;SH.err='';const r=await a.fn(SH.draft);if(r===false)return;closeSheet();if(typeof r==='string')toast(r)};
+A.shAct=async d=>{const a=SH?.actions?.[+d.i];if(!a)return;SH.err='';try{const r=await a.fn(SH.draft);if(r===false)return;closeSheet();if(typeof r==='string')toast(r)}catch(e){toast(e.message||'تعذّر تنفيذ العملية')}};
 A.rmFile=(d)=>{const arr=(getPath(SH.draft,d.k)||[]).filter(f=>(f.id||f)!==d.id);setPath(SH.draft,d.k,arr);redraw()};
-A.logout=()=>{if(ME){auditLog('logout','session',ME.id,null,{name:ME.name});flushAudit()}aiReset();SESS=null;meId=null;sessSave(null);closeSheet();const r=$('#root');r.dataset.gate='';location.hash='home';render()};
+A.logout=async()=>{if(MODE==='server'){try{await api('/api/auth/logout',{method:'POST',body:'{}'})}catch(e){console.warn(e)}COLS.forEach(c=>S[c]={});loaded.clear();COLS.forEach(c=>loaded.add(c));SERVER_SETUP=false}else if(ME){auditLog('logout','session',ME.id,null,{name:ME.name});flushAudit()}aiReset();SESS=null;meId=null;sessSave(null);closeSheet();const r=$('#root');r.dataset.gate='';location.hash='home';render()};
 A.togglePw=d=>{const i=document.getElementById(d.t);if(!i)return;const sh=i.type==='password';i.type=sh?'text':'password';const b=document.querySelector(`[data-act="togglePw"][data-t="${d.t}"]`);if(b)b.textContent=sh?'إخفاء':'إظهار'};
 A.addLine=(d)=>{const arr=getPath(SH.draft,d.k)||[];arr.push(JSON.parse(d.tpl||'{}'));arr[arr.length-1].id=uid();setPath(SH.draft,d.k,arr);redraw()};
 A.rmLine=(d)=>{const arr=getPath(SH.draft,d.k)||[];arr.splice(+d.i,1);redraw()};
@@ -2054,8 +2127,8 @@ A.editMember=d=>{if(!perm('admin.users'))return toast('إدارة المستخد
   actions:[{label:'حفظ',fn:async x=>{if(!x.name)return shErr('أدخل الاسم');const u=(x.username||'').trim().toLowerCase();if(!/^[a-z0-9._-]{3,30}$/.test(u))return shErr('اسم المستخدم: 3 أحرف إنجليزية أو أرقام على الأقل بدون مسافات');if(L('team').some(t=>t.id!==d.id&&(t.username||'').toLowerCase()===u))return shErr('اسم المستخدم مستخدم لموظف آخر');if(isNew&&!x.pw)return shErr('أدخل كلمة مرور مؤقتة');if(x.pw){const r=pwRule(x.pw);if(r)return shErr(r)}
     const keepsAdmin=x.active!==false&&roleDef(x.role).perms.includes('admin.users');
     if(d.id===ME.id&&!keepsAdmin)return shErr('لا يمكنك إيقاف حسابك أو نقله لدور بدون صلاحية إدارة المستخدمين');
-    if(!keepsAdmin&&!L('team').some(t=>t.id!==d.id&&t.active!==false&&t.passHash&&roleDef(t.role).perms.includes('admin.users')))return shErr('يجب أن يبقى مستخدم نشط واحد على الأقل يملك صلاحية إدارة المستخدمين');
-    const o={...x,username:u};delete o.pw;if(x.pw){o.salt=uid();o.passHash=await hashPw(o.salt,x.pw);o.mustChange=true}const id=d.id||uid();await put('team',id,o);return x.pw?`تم الحفظ — أبلغ ${x.name} باسم المستخدم وكلمة المرور المؤقتة`:'تم الحفظ'}}]})};
+    if(!keepsAdmin&&!L('team').some(t=>t.id!==d.id&&t.active!==false&&roleDef(t.role).perms.includes('admin.users')))return shErr('يجب أن يبقى مستخدم نشط واحد على الأقل يملك صلاحية إدارة المستخدمين');
+    const o={...x,username:u};delete o.pw;if(x.pw){if(MODE==='server'){o.password=x.pw;o.mustChange=true}else{o.salt=uid();o.passHash=await hashPw(o.salt,x.pw);o.mustChange=true}}const id=d.id||uid();await put('team',id,o);return x.pw?`تم الحفظ — أبلغ ${x.name} باسم المستخدم وكلمة المرور المؤقتة`:'تم الحفظ'}}]})};
 A.editItem=d=>{const m=d.id?clone(S.items[d.id]):{unit:'عدد',cost:0};openSheet({title:d.id?'تعديل صنف':'صنف جديد',draft:m,body:x=>`<div class="fg">${fld('الكود *','code',x)}${fld('اسم الصنف *','name',x)}${fld('الوحدة','unit',x)}${money()?fld('التكلفة المرجعية','cost',x,{type:'number'}):''}${fld('بند المقايسة في النماذج','boqCode',x,{type:'select',options:[['',''],...STD_COLS]})}<label class="check full"><input type="checkbox" data-k="serial" ${x.serial?'checked':''}> صنف بتتبع رقم تسلسلي (انفرترات، لوحات…)</label></div>`,actions:[{label:'حفظ',fn:async x=>{if(!x.code||!x.name)return shErr('أدخل الكود والاسم');if(L('items').some(o=>o.id!==d.id&&norm(o.code)===norm(x.code)))return shErr('الكود مستخدم لصنف آخر');await put('items',d.id||uid(),{...x,cost:N(x.cost)});return'تم الحفظ'}}]})};
 A.editSupplier=d=>{const m=d.id?clone(S.suppliers[d.id]):{creditLimit:0};openSheet({title:d.id?'تعديل مورد':'مورد جديد',draft:m,body:x=>`<div class="fg">${fld('اسم المورد *','name',x)}${fld('البريد','email',x,{type:'email'})}${fld('الجوال','phone',x)}${fld('الرقم الضريبي','vat',x)}${fld('حد الائتمان','creditLimit',x,{type:'number'})}</div>`,actions:[{label:'حفظ',fn:async x=>{if(!x.name)return shErr('أدخل الاسم');await put('suppliers',d.id||uid(),{...x,creditLimit:N(x.creditLimit)});return'تم الحفظ'}}]})};
 A.editTemplate=d=>{const t=d.id?clone(S.templates[d.id]):{name:'نموذج جديد',kw:0,panels:0,margin:17,boq:[],res:[]};openSheet({title:`نموذج: ${esc(t.name)}`,wide:true,redrawOnSelect:true,draft:t,body:x=>`<div class="fg">${fld('اسم النموذج','name',x)}${fld('القدرة ك.و','kw',x,{type:'number'})}${fld('عدد الألواح','panels',x,{type:'number'})}</div>`+budgetEditorBody(x),recalc:budgetRecalc,onChange:onBudgetChange,actions:[{label:'حفظ النموذج',fn:async x=>{x.res=(x.res||[]).filter(l=>l.name);x.res.forEach(l=>l.id=l.id||uid());(x.boq||[]).forEach(l=>l.id=l.id||uid());await put('templates',d.id||uid(),x);return'تم حفظ النموذج'}}]})};
@@ -2065,7 +2138,7 @@ A.editCtpl=()=>openSheet({title:'نموذج العقد والعرض',wide:true,r
   actions:[{label:'حفظ النموذج',fn:async x=>{if(!schedOk(x.schedule))return shErr('مجموع نسب الدفعات يجب أن يساوي 100%');x.handoverChecks=String(x.checksTxt||'').split('\n').map(s=>s.trim()).filter(Boolean);delete x.checksTxt;x.schedule=x.schedule.map(({id,...m})=>m);x.clauses=x.clauses.map(({id,...c})=>c);x.warranties=x.warranties.map(({id,...w})=>w);await put('meta','contractTpl',x);return'تم حفظ النموذج'}}]});
 A.clearDemo=()=>!perm('admin.demo')?toast('لا تملك الصلاحية'):openSheet({title:'حذف البيانات التجريبية',draft:{},body:()=>`<div class="alert bad"><span>${IC.alert}</span><div>ستُحذف كل المشاريع والحركات والمستخدمين المعلَّمين «مثال». لا يمكن التراجع.</div></div>`,actions:[{label:'حذف نهائي',cls:'bad',fn:async()=>{for(const c of COLS){if(['items','templates','suppliers','meta'].includes(c))continue;for(const x of L(c))if(x.demo&&!(c==='team'&&x.id===meId))await del(c,x.id)}return'حُذفت البيانات التجريبية'}}]});
 
-/* ============ boot ============ */
+/* ------ boot ------ */
 if(location.protocol==='file:'||E2E_MODE)window.__npi={DOCS,toPdfBlob,pdfFonts,EXPORTS,makeXlsx,makeCsv,readXlsx,readCsv,qTotals};
 readRoute();
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&SH)closeSheet()});

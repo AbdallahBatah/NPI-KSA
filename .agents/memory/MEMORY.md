@@ -1,1 +1,2 @@
 - [Browser test mode](browser-test-mode.md) — use an explicit query flag plus WebDriver detection for browser-only test helpers on hosted HTTPS previews.
+- [Shared data hosting and migration](shared-data-migration.md) — User chose Replit PostgreSQL; first setup imports this browser’s snapshot without deleting its local copy.
