@@ -10,6 +10,16 @@
 - On a fresh browser, the Arabic first-run screen creates the general manager
   account. No demo data is automatically loaded.
 
+## Publishing
+
+- Keep the existing Autoscale publishing target.
+- Build command: `npm run build`.
+- Run command: `npm start`.
+- The server listens on `0.0.0.0:5000`, matching the configured public port.
+- Do not use an editor's single-file run command (`bash $file`) for publishing:
+  it does not launch the application server.
+- Publishing configuration changes take effect only after publishing again.
+
 ## Existing limitations
 
 - This is the app's original local-preview mode. Data and account credentials
