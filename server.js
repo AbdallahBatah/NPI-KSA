@@ -616,6 +616,12 @@ const server = http.createServer(async (req, res) => {
     else if (req.method === "GET" || req.method === "HEAD") serveStatic(req, res, url);
     else send(res, 405, { error: "الطريقة غير مسموحة" });
   } catch (error) {
+    if (error.code === "42P01") {
+      console.error("[DATABASE_SCHEMA_MISSING] Required database tables are missing. Apply db/schema.sql to development and use the normal publish schema migration for production. Startup/build never create tables.");
+      if (!res.headersSent) send(res, 503, { code: "DATABASE_SCHEMA_MISSING", error: "جداول قاعدة البيانات غير مكتملة. يرجى التواصل مع مسؤول النظام لتطبيق مخطط قاعدة البيانات." });
+      else res.destroy();
+      return;
+    }
     if (!res.headersSent) send(res, error.status || 500, { error: error.status ? error.message : "حدث خطأ في الخادم" });
     else res.destroy();
     if (!error.status) console.error(error);

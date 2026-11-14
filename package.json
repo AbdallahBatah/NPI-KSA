@@ -10,7 +10,8 @@
     "build:publish": "npm ci --omit=dev --no-audit --no-fund && npm run build",
     "seed": "node seed/seed.mjs seed/seed.json",
     "test": "bash tests/run-all.sh",
-    "test:smoke": "node tests/smoke.js"
+    "test:smoke": "node tests/smoke.js",
+    "test:release": "node tests/release-smoke.js"
   },
   "devDependencies": {
     "playwright": "^1.65.0"

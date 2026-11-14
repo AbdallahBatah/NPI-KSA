@@ -55,6 +55,16 @@
 
 ## Tests
 
+Run `npm run test:release` before publishing. It requires Node/npm, Python 3,
+and PostgreSQL tools (`initdb`, `pg_ctl`, `psql`) on PATH, as a non-root user.
+It builds a disposable release with production-only dependencies and starts
+`npm start` against its own temporary PostgreSQL cluster (private Unix socket,
+no TCP listener). It ignores existing database credentials and secrets, checks
+`/` and `/api/session`, verifies missing-table diagnostics, and removes the
+temporary release/database afterward. It never applies DDL to development or
+production. Missing schema is reported as HTTP 503 with
+`DATABASE_SCHEMA_MISSING`; server logs point to the normal schema migration.
+
 The repository's existing Playwright tests are under `tests/`. `npm test` runs
 the imported test suite; its scripts may require adapting their original paths
 and browser executable assumptions before they can run on Replit.
