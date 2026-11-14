@@ -15,7 +15,14 @@
 - The Node server uses the built-in crypto module for password hashing and
   random, HttpOnly session cookies; `pg` is its only application dependency.
 - On a fresh browser, the Arabic first-run screen creates the general manager
-  account. No demo data is automatically loaded.
+  account only with the owner's setup token. No demo data is automatically loaded.
+- First-admin setup requires a dedicated `NPI_SETUP_TOKEN` server secret of at
+  least 32 characters (use a randomly generated value). Missing/short tokens
+  disable setup; there is no public fallback. The owner enters it in the
+  password-style setup field; never put it in source, URLs, or browser storage.
+  Remove the secret after successful setup. Existing accounts/sign-in do not
+  depend on it. If the database is reset, setup remains blocked until the owner
+  configures a new token. Do not reuse `SESSION_SECRET` or database credentials.
 
 ## Data and access
 

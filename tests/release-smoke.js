@@ -186,6 +186,111 @@ async function main() {
   assert.equal((await request(base, "/api/session", headers)).status, 200);
   console.log("PASS GET /api/session against the real test schema, with and without a cookie");
 
+  async function setupAt(target, body, extraHeaders = {}) {
+    const response = await fetch(target + "/api/auth/setup", {
+      method: "POST", headers: { "Content-Type": "application/json", ...extraHeaders },
+      body: JSON.stringify(body), signal: AbortSignal.timeout(5000),
+    });
+    return { status: response.status, cookie: response.headers.get("set-cookie"), text: await response.text() };
+  }
+  const setupBody = { name: "Owner", username: "owner", password: "Owner-test-2937" };
+  async function assertPristine() {
+    await sql(`DO $$ BEGIN
+      IF EXISTS(SELECT 1 FROM npi_users) OR EXISTS(SELECT 1 FROM npi_records)
+        OR EXISTS(SELECT 1 FROM npi_sessions) THEN
+        RAISE EXCEPTION 'Unauthorized setup changed the database';
+      END IF;
+    END $$`);
+  }
+  const disabled = await setupAt(base, setupBody);
+  assert.equal(disabled.status, 503, disabled.text);
+  assert.equal(disabled.cookie, null);
+  await assertPristine();
+
+  async function setupServer(token) {
+    const setupPort = await unusedPort();
+    const child = launch("npm", ["start"], release, {
+      NODE_ENV: "production", PORT: String(setupPort), DATABASE_URL: databaseUrl, NPI_SETUP_TOKEN: token,
+    });
+    const target = `http://127.0.0.1:${setupPort}`;
+    for (let i = 0; i < 100; i++) {
+      assert.equal(child.exitCode, null, child.output);
+      try {
+        if ((await request(target, "/api/session")).status === 200) return { child, target };
+      } catch {}
+      await sleep(100);
+    }
+    assert.fail("Setup test server did not start");
+  }
+  const weak = await setupServer("short-token");
+  assert.equal((await setupAt(weak.target, { ...setupBody, setupToken: "short-token" })).status, 503);
+  kill(weak.child);
+  await weak.child.finished;
+  await assertPristine();
+
+  const setupToken = crypto.randomBytes(32).toString("hex");
+  const ownerServer = await setupServer(setupToken);
+  const target = ownerServer.target;
+  const maliciousImport = {
+    team: { attacker: { id: "attacker", username: "attacker", role: "gm", passHash: "bad", salt: "bad" } },
+    projects: { injected: { name: "Untrusted project" } },
+    meta: { roles: { defs: { eng: { perms: ["admin.users"] } } } },
+  };
+  for (const candidate of [undefined, "", "incorrect", setupToken.slice(1), { value: setupToken }]) {
+    const denied = await setupAt(target, { ...setupBody, setupToken: candidate, importData: maliciousImport });
+    assert.equal(denied.status, 403, denied.text);
+    assert.equal(denied.cookie, null);
+    assert.ok(!denied.text.includes(setupToken));
+    await assertPristine();
+  }
+  const crossOrigin = await setupAt(target, { ...setupBody, setupToken }, { Origin: "https://attacker.invalid" });
+  assert.equal(crossOrigin.status, 403);
+  assert.equal(crossOrigin.cookie, null);
+  await assertPristine();
+  console.log("PASS missing/weak owner configuration fails closed; unauthorized setup/import creates no data or sessions");
+
+  const authorized = await setupAt(target, {
+    ...setupBody, setupToken,
+    importData: { projects: { imported: { name: "Owner import" } } },
+  });
+  assert.equal(authorized.status, 200, authorized.text);
+  assert.match(authorized.cookie, /npi_session=.*HttpOnly/);
+  const ownerCookie = { Cookie: authorized.cookie.split(";")[0] };
+  const ownerSession = JSON.parse((await request(target, "/api/session", ownerCookie)).text);
+  assert.equal(ownerSession.authenticated, true);
+  assert.equal(ownerSession.user.role, "gm");
+  assert.equal(ownerSession.setupRequired, false);
+  const importedData = JSON.parse((await request(target, "/api/data", ownerCookie)).text);
+  assert.ok(JSON.stringify(importedData).includes("Owner import"));
+  const repeat = await setupAt(target, { ...setupBody, setupToken });
+  assert.equal(repeat.status, 409);
+  assert.equal(repeat.cookie, null);
+  // Removing the setup secret must not affect existing accounts or sessions.
+  assert.equal(JSON.parse((await request(base, "/api/session", ownerCookie)).text).authenticated, true);
+  console.log("PASS owner-only setup preserves optional import, signs in the GM, and rejects repeat setup");
+
+  // Test-only reset: never touch the workspace or production databases.
+  await sql("TRUNCATE npi_sessions, npi_users, npi_records CASCADE");
+  const resetAttack = await setupAt(target, { ...setupBody, importData: maliciousImport });
+  assert.equal(resetAttack.status, 403);
+  assert.equal(resetAttack.cookie, null);
+  await assertPristine();
+  const raced = await Promise.all([
+    setupAt(target, { ...setupBody, setupToken }),
+    setupAt(target, { ...setupBody, username: "otherowner", setupToken }),
+  ]);
+  assert.deepEqual(raced.map(result => result.status).sort(), [200, 409]);
+  assert.equal(raced.filter(result => result.cookie).length, 1);
+  await sql(`DO $$ BEGIN
+    IF (SELECT count(*) FROM npi_users) <> 1 OR (SELECT count(*) FROM npi_sessions) <> 1 THEN
+      RAISE EXCEPTION 'Setup race created extra accounts or sessions';
+    END IF;
+  END $$`);
+  kill(ownerServer.child);
+  await ownerServer.child.finished;
+  await sql("TRUNCATE npi_sessions, npi_users, npi_records CASCADE");
+  console.log("PASS database reset does not reopen public setup; concurrent owner requests create exactly one administrator");
+
   await sql("ALTER TABLE npi_sessions RENAME TO hidden_sessions");
   await missingSchema("/api/session", headers);
   await sql("ALTER TABLE hidden_sessions RENAME TO npi_sessions");

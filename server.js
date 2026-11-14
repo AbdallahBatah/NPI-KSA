@@ -396,8 +396,24 @@ async function persistUserRecord(id, input, user, isNew = false, req) {
   if (data.active === false) await pool.query("DELETE FROM npi_sessions WHERE user_id=$1", [id]);
   return cleanSecrets(data);
 }
+function requireSetupOwner(body) {
+  const expected = process.env.NPI_SETUP_TOKEN;
+  // Never fall back to public setup or reuse a session/database credential.
+  if (typeof expected !== "string" || expected.trim().length < 32) {
+    fail(503, "تهيئة النظام مغلقة. يجب على مالك النظام ضبط رمز التهيئة الآمن أولاً.");
+  }
+  const supplied = body?.setupToken;
+  if (typeof supplied !== "string" || supplied.length > 1024 ||
+      !crypto.timingSafeEqual(
+        crypto.createHash("sha256").update(supplied).digest(),
+        crypto.createHash("sha256").update(expected).digest(),
+      )) {
+    fail(403, "رمز تهيئة المالك غير صحيح");
+  }
+}
 async function bootstrap(req, res, body) {
   checkOrigin(req);
+  requireSetupOwner(body);
   const name = String(body.name || "").trim();
   const username = String(body.username || "").trim().toLowerCase();
   validatePassword(body.password);
