@@ -10,36 +10,27 @@ async function main() {
     page.on('pageerror', error => pageErrors.push(error.message));
 
     await page.goto(TEST_URL);
-    await page.locator('#setupForm').waitFor();
-    assert.equal(await page.locator('#loginForm').count(), 0, 'fresh browser profile should show initial setup');
+    await page.locator('#loginForm').waitFor();
+    assert.equal(await page.locator('#setupForm').count(), 0, 'fresh browser profile must not expose account setup');
+    assert.match(await page.locator('.alert[role="status"]').innerText(), /إنشاء الحسابات متاح لمسؤول النظام فقط/,
+      'fresh profile should direct the user to the administrator');
     assert.equal(await page.evaluate(() => localStorage.getItem('npi-local-v1')), null, 'fresh profile should have no saved app data');
 
-    const username = `smoke${Date.now().toString(36)}`;
-    const password = 'SmokeCheck2026';
-    await page.fill('#suName', 'Mobile Smoke Admin');
-    await page.fill('#suUser', username);
-    await page.fill('#suPass', password);
-    await page.fill('#suPass2', password);
-    await page.locator('#setupForm button[type="submit"]').click();
-    await page.locator('.dash-h h1').waitFor();
-
-    const afterSetup = await page.evaluate(() => ({
-      state: JSON.parse(localStorage.getItem('npi-local-v1') || 'null'),
-      session: localStorage.getItem('npi-sess'),
-      overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
-    }));
-    assert(afterSetup.state && Object.values(afterSetup.state.team || {}).some(user => user.username === username),
-      'new account should persist in app state');
-    assert(afterSetup.session, 'new account should create a remembered session');
-    assert.equal(afterSetup.overflow, false, 'setup/dashboard should fit a mobile viewport');
-    console.log('PASS mobile setup creates a fresh account and loads the dashboard');
-
+    const seed = require('../seed/seed.json');
+    await page.evaluate(data => localStorage.setItem('npi-local-v1', JSON.stringify(data)), seed);
     await page.reload();
+    await page.locator('#loginForm').waitFor();
+    assert.equal(await page.locator('.alert[role="status"]').count(), 0,
+      'account notice should disappear when accounts exist');
+    console.log('PASS fresh mobile profile has login only and no public account setup');
+
+    await page.fill('#lgUser', 'gm');
+    await page.fill('#lgPass', 'Npi@2026');
+    await page.locator('#loginForm button[type="submit"]').click();
     await page.locator('.dash-h h1').waitFor();
-    assert(await page.evaluate(name =>
-      Object.values(JSON.parse(localStorage.getItem('npi-local-v1')).team).some(user => user.username === name),
-    username), 'account data should persist after reload');
-    console.log('PASS account and dashboard persist after reload');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1),
+      false, 'dashboard should fit a mobile viewport');
+    console.log('PASS administrator login loads the dashboard on mobile');
 
     await page.goto(`${TEST_URL}#profile`);
     await page.locator('.ph [data-act="logout"]').click();
@@ -47,13 +38,12 @@ async function main() {
     assert.equal(await page.evaluate(() => localStorage.getItem('npi-sess')), null, 'logout should remove the session');
     console.log('PASS logout returns to login and clears the session');
 
-    await page.fill('#lgUser', username);
-    await page.fill('#lgPass', password);
+    await page.fill('#lgUser', 'gm');
+    await page.fill('#lgPass', 'Npi@2026');
     await page.locator('#loginForm button[type="submit"]').click();
     await page.locator('.dash-h h1').waitFor();
-    assert.equal(await page.evaluate(name =>
-      Object.values(JSON.parse(localStorage.getItem('npi-local-v1')).team).some(user => user.username === name),
-    username), true, 'created account should log in again with persisted data');
+    assert.equal(await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('npi-local-v1')).team)
+      .some(user => user.username === 'gm')), true, 'the admin account should remain available');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1),
       false, 'signed-in dashboard should fit a mobile viewport');
     assert.deepEqual(pageErrors, [], 'page should not raise JavaScript errors');

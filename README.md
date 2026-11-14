@@ -63,7 +63,7 @@ fetch('seed/seed.json').then(r=>r.json()).then(s=>{localStorage.setItem('npi-loc
 
 إذا منع المتصفح `fetch` من ملف محلي، شغّل خادماً بسيطاً: `python3 -m http.server`.
 
-**الحسابات التجريبية:** كلمة المرور لكل الحسابات `Npi@2026`. أسماء الدخول: `gm` و`pgm` و`finance` و`tech` و`eng1` و`eng2` و`store` و`admin`. **غيّر كلمات المرور واحذف البيانات التجريبية قبل الاستخدام الفعلي** من: الإعدادات ← البيانات.
+**الحسابات التجريبية:** كلمة المرور لكل الحسابات `Npi@2026`. أسماء الدخول: `gm` و`pgm` و`finance` و`tech` و`eng1` و`eng2` و`store` و`admin`. شاشة الدخول لا تتيح إنشاء حساب جديد؛ ينشئ المدير المستخدمين من الإدارة ← المستخدمون. **غيّر كلمات المرور واحذف البيانات التجريبية قبل الاستخدام الفعلي** من: الإعدادات ← البيانات.
 
 ## الاختبارات
 
@@ -72,7 +72,7 @@ npm install
 npm test
 ```
 
-On Replit, `npm test` targets the running HTTPS preview and uses the system Chromium executable. Run `npm run test:smoke` for the isolated fresh-account, persistence, logout/login, and mobile setup check. For another environment, set `TEST_BASE_URL` to the app URL and optionally `CHROMIUM_PATH` to a Chromium executable; install Playwright's browser with `npx playwright install chromium` if needed.
+On Replit, `npm test` targets the running HTTPS preview and uses the system Chromium executable. Run `npm run test:smoke` to check that a fresh browser sees login only, then verify login, persistence, logout, and mobile layout. For another environment, set `TEST_BASE_URL` to the app URL and optionally `CHROMIUM_PATH` to a Chromium executable; install Playwright's browser with `npx playwright install chromium` if needed.
 
 تغطي الاختبارات ما يلي:
 - الدورة الكاملة على مشروع جديد بكل الحسابات (74 نقطة).

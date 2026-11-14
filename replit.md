@@ -7,8 +7,10 @@
 - Make application changes in `src/npi-projects.html`, then restart Run to rebuild.
 - `npm run build` rebuilds only; `npm start` serves the existing build.
 - There are no application runtime package dependencies or required secrets.
-- On a fresh browser, the Arabic first-run screen creates the general manager
-  account. No demo data is automatically loaded.
+- A fresh browser shows login only. There is no public first-run account
+  creation; an administrator with user-management permission must create users.
+- In this original browser-local mode, accounts exist only in the browser's
+  local data. A fresh browser profile has no account to log into.
 
 ## Publishing
 

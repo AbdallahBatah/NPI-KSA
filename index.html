@@ -723,7 +723,7 @@ function render(){
   if(!loaded.has('team')){root.dataset.gate='';root.innerHTML='<div class="loading">جارٍ تحميل النظام…</div>';return}
   ME=sessionUser();
   if((!ME||ME.mustChange)&&$('#ai')?.innerHTML)$('#ai').innerHTML='';
-  if(!ME){const key=L('team').length?'login':'setup';if(root.dataset.gate===key)return;root.dataset.gate=key;root.innerHTML=key==='setup'?setupView():loginView();setTimeout(()=>root.querySelector('input')?.focus(),30);return}
+  if(!ME){const key='login';if(root.dataset.gate===key)return;root.dataset.gate=key;root.innerHTML=loginView();setTimeout(()=>root.querySelector('input')?.focus(),30);return}
   if(ME.mustChange){if(root.dataset.gate==='force')return;root.dataset.gate='force';root.innerHTML=forceView();return}
   root.dataset.gate='';
   const n=tasks().length+myFtasks('mine').filter(t=>t.status!=='done'&&t.due&&t.due<=today()).length;
@@ -781,6 +781,7 @@ function view(){
 function authShell(inner){return `<div class="login"><div class="box"><div class="login-brand">${LOGO}<div class="sunline"></div></div>${inner}<p class="login-foot">شركة الطاقة والصناعة الوطنية • نظام إدارة مشاريع الطاقة الشمسية</p></div></div>`}
 function loginView(){
   return authShell(`<h1>تسجيل الدخول</h1><p>أدخل اسم المستخدم وكلمة المرور التي أعطاك إياها المدير العام.</p>
+  ${L('team').length?'':'<div class="alert warn" role="status">لا توجد حسابات مُعدّة لهذا المتصفح بعد. إنشاء الحسابات متاح لمسؤول النظام فقط؛ تواصل مع المسؤول.</div>'}
   <form class="auth" id="loginForm" autocomplete="on" novalidate>
     <label class="f">اسم المستخدم<input class="in" id="lgUser" name="username" autocomplete="username" dir="ltr" required></label>
     <label class="f">كلمة المرور<span class="pw"><input class="in" id="lgPass" name="password" type="password" autocomplete="current-password" dir="ltr" required><button type="button" class="pw-eye" data-act="togglePw" data-t="lgPass" aria-label="إظهار كلمة المرور">إظهار</button></span></label>
@@ -788,16 +789,6 @@ function loginView(){
     <div class="auth-err" id="lgErr" role="alert" hidden></div>
     <button class="btn pri big" type="submit">دخول</button>
     <p class="hint" style="margin:0">نسيت كلمة المرور؟ اطلب من المدير العام أو مدير النظام إعادة تعيينها من الإدارة ← المستخدمون.</p>
-  </form>`)}
-function setupView(){
-  return authShell(`<h1>تهيئة النظام</h1><p>أول دخول للنظام. أنشئ حساب المدير العام، ثم أضف بقية الفريق من الإعدادات.</p>
-  <form class="auth" id="setupForm" novalidate>
-    <label class="f">الاسم الكامل<input class="in" id="suName" required></label>
-    <label class="f">اسم المستخدم (بالإنجليزية)<input class="in" id="suUser" dir="ltr" autocomplete="username" required></label>
-    <label class="f">كلمة المرور (8 أحرف على الأقل)<input class="in" id="suPass" type="password" dir="ltr" autocomplete="new-password" required></label>
-    <label class="f">تأكيد كلمة المرور<input class="in" id="suPass2" type="password" dir="ltr" autocomplete="new-password" required></label>
-    <div class="auth-err" id="lgErr" role="alert" hidden></div>
-    <button class="btn pri big" type="submit">إنشاء الحساب والدخول</button>
   </form>`)}
 function forceView(){
   return authShell(`<h1>تعيين كلمة مرور جديدة</h1><p>مرحباً ${esc(ME.name)}. هذه أول مرة تدخل فيها، أو أعاد المدير العام تعيين كلمة مرورك. اختر كلمة مرور خاصة بك.</p>
@@ -811,7 +802,7 @@ function forceView(){
 function authErr(m){const e=$('#lgErr');if(e){e.textContent=m;e.hidden=!m}}
 const pwRule=p=>p.length<8?'كلمة المرور يجب ألا تقل عن 8 أحرف':!/[0-9]/.test(p)||!/[A-Za-z؀-ۿ]/.test(p)?'كلمة المرور يجب أن تحتوي على حروف وأرقام':'';
 document.addEventListener('submit',async e=>{
-  const f=e.target;if(!['loginForm','setupForm','forceForm'].includes(f.id))return;e.preventDefault();authErr('');
+  const f=e.target;if(!['loginForm','forceForm'].includes(f.id))return;e.preventDefault();authErr('');
   if(f.id==='loginForm'){
     if(Date.now()<lockUntil)return authErr(`محاولات كثيرة خاطئة. حاول بعد ${Math.ceil((lockUntil-Date.now())/1000)} ثانية.`);
     const u=$('#lgUser').value.trim().toLowerCase(),p=$('#lgPass').value;if(!u||!p)return authErr('أدخل اسم المستخدم وكلمة المرور');
@@ -821,14 +812,6 @@ document.addEventListener('submit',async e=>{
     if(m.active===false)return authErr('هذا الحساب موقوف. تواصل مع المدير العام.');
     loginFails=0;SESS={id:m.id,sig:m.passHash.slice(0,16)};sessSave(SESS,$('#lgRemember').checked);meId=m.id;auditLog('login','session',m.id,null,{name:m.name},m);
     put('team',m.id,{...clone(m),lastLogin:nowISO()});location.hash='home';route='home';render();
-  }
-  if(f.id==='setupForm'){
-    if(L('team').length)return render();
-    const n=$('#suName').value.trim(),u=$('#suUser').value.trim().toLowerCase(),p=$('#suPass').value,p2=$('#suPass2').value;
-    if(!n||!u)return authErr('أدخل الاسم واسم المستخدم');if(!/^[a-z0-9._-]{3,30}$/.test(u))return authErr('اسم المستخدم: 3 أحرف إنجليزية أو أرقام على الأقل، بدون مسافات');
-    const r=pwRule(p);if(r)return authErr(r);if(p!==p2)return authErr('كلمتا المرور غير متطابقتين');
-    const id=uid(),salt=uid();const h=await hashPw(salt,p);await put('team',id,{name:n,username:u,role:'gm',salt,passHash:h,active:true,createdAt:nowISO()});
-    SESS={id,sig:h.slice(0,16)};sessSave(SESS,true);meId=id;render();
   }
   if(f.id==='forceForm'){
     const p=$('#fcPass').value,p2=$('#fcPass2').value;const r=pwRule(p);if(r)return authErr(r);if(p!==p2)return authErr('كلمتا المرور غير متطابقتين');

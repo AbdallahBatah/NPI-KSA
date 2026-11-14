@@ -5,13 +5,11 @@ const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed'
  const errs=[];pg.on('pageerror',e=>errs.push('PAGEERR '+e.message));pg.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_FAILED'))errs.push(m.text())});
  await pg.route(/fonts\.(googleapis|gstatic)/,r=>r.abort());
  let fails=0;const check=(c,msg)=>{console.log((c?'PASS ':'FAIL ')+msg);if(!c)fails++};
- // 1. empty -> setup
+ // 1. empty system has login but no public account creation
  await pg.goto(U);await pg.waitForTimeout(300);
- check(await pg.locator('#setupForm').count()===1,'empty system shows setup page');await pg.screenshot({path:'a1-setup.png'});
- await pg.fill('#suName','مدير تجربة');await pg.fill('#suUser','boss');await pg.fill('#suPass','short');await pg.fill('#suPass2','short');await pg.click('#setupForm button[type=submit]');await pg.waitForTimeout(200);
- check(await pg.locator('#lgErr').isVisible(),'weak password rejected');
- await pg.fill('#suPass','Strong123');await pg.fill('#suPass2','Strong123');await pg.click('#setupForm button[type=submit]');await pg.waitForTimeout(400);
- check(await pg.locator('.rail').count()===1,'setup creates GM and logs in');
+ check(await pg.locator('#setupForm').count()===0,'empty system does not expose account setup');
+ check(await pg.locator('#loginForm').count()===1,'empty system shows login screen');await pg.screenshot({path:'a1-login-no-users.png'});
+ check((await pg.locator('.alert[role="status"]').innerText()).includes('مسؤول النظام فقط'),'empty system directs users to admin');
  // 2. load seed, login page
  await pg.evaluate(s=>{localStorage.clear();sessionStorage.clear();localStorage.setItem('npi-local-v1',JSON.stringify(s))},seed);await pg.goto(U+'#home');await pg.reload();await pg.waitForTimeout(300);
  check(await pg.locator('#loginForm').count()===1,'login page shown');await pg.screenshot({path:'a2-login.png'});
