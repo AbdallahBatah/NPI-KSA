@@ -27,7 +27,6 @@ const DEFAULT_PERMS = {
 const ROLE_BASE = { gm: "gm", pgm: "pgm", fin: "fin", eng: "eng", tech: "tech", store: "store", admin: "admin" };
 const SECRET_FIELDS = /^(passHash|password|passwordHash|passwordSalt|salt|session|token)$/i;
 const MONEY_FIELDS = /^(cost|price|amount|total|vat|creditLimit|rate|finNote|payTerms|margin|profit|paid|payment|payments|invoice|financial|sale|expense|retained|advance|contractValue|subtotal|grandTotal)$/i;
-const loginFailures = new Map();
 
 function fail(status, message) {
   const error = new Error(message);
@@ -169,6 +168,34 @@ async function verifyPassword(user, password) {
   const actual = await scrypt(password, Buffer.from(user.pw_salt, "hex"), 64);
   const expected = Buffer.from(user.pw_hash, "hex");
   return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
+}
+async function reserveLoginAttempt(user) {
+  // Bounded cleanup, with row locks so concurrent reservations cannot be evicted.
+  await pool.query(`DELETE FROM npi_login_limits WHERE bucket IN (
+    SELECT bucket FROM npi_login_limits WHERE expires_at <= now()
+    ORDER BY expires_at LIMIT 100 FOR UPDATE SKIP LOCKED
+  )`);
+  const bucket = user ? `user:${user.id}` : "unknown";
+  const token = crypto.randomUUID();
+  // Reserve BEFORE password hashing. Atomic UPSERT admits only five concurrent
+  // guesses across all instances; a blocked request never extends the lockout.
+  const result = await pool.query(
+    `INSERT INTO npi_login_limits(bucket,user_id,attempts,expires_at,attempt_token)
+     VALUES($1,$2,1,now()+interval '60 seconds',$3)
+     ON CONFLICT (bucket) DO UPDATE SET
+       attempts = CASE WHEN npi_login_limits.expires_at <= now() THEN 1
+                       ELSE npi_login_limits.attempts+1 END,
+       expires_at = CASE WHEN npi_login_limits.expires_at <= now()
+                              OR npi_login_limits.attempts=4
+                         THEN now()+interval '60 seconds'
+                         ELSE npi_login_limits.expires_at END,
+       attempt_token = EXCLUDED.attempt_token
+     WHERE npi_login_limits.expires_at <= now() OR npi_login_limits.attempts < 5
+     RETURNING bucket`,
+    [bucket, user?.id || null, token],
+  );
+  if (!result.rowCount) fail(429, "محاولات كثيرة. حاول بعد دقيقة.");
+  return { bucket, token };
 }
 async function startSession(req, res, userId) {
   const raw = crypto.randomBytes(32).toString("base64url");
@@ -502,20 +529,13 @@ async function handleApi(req, res, url) {
     checkOrigin(req);
     const body = await readBody(req, 64 * 1024);
     const username = String(body.username || "").trim().toLowerCase();
-    const key = `${req.socket.remoteAddress || "unknown"}:${username}`;
-    const now = Date.now();
-    const state = loginFailures.get(key) || { count: 0, until: 0 };
-    if (state.until > now) fail(429, "محاولات كثيرة. حاول بعد دقيقة.");
     const { rows } = await pool.query("SELECT * FROM npi_users WHERE username=$1", [username]);
     const user = rows[0];
+    const attempt = await reserveLoginAttempt(user);
     const valid = user && user.active && await verifyPassword(user, String(body.password || ""));
-    if (!valid) {
-      state.count++;
-      if (state.count >= 5) { state.count = 0; state.until = now + 60_000; }
-      loginFailures.set(key, state);
-      fail(401, "اسم المستخدم أو كلمة المرور غير صحيحة");
-    }
-    loginFailures.delete(key);
+    if (!valid) fail(401, "اسم المستخدم أو كلمة المرور غير صحيحة");
+    // Do not let an earlier successful request erase later concurrent attempts.
+    await pool.query("DELETE FROM npi_login_limits WHERE bucket=$1 AND attempt_token=$2", [attempt.bucket, attempt.token]);
     if (user.pw_algo === "legacy-sha256") {
       const upgraded = await createPassword(String(body.password));
       await pool.query("UPDATE npi_users SET pw_algo=$1,pw_salt=$2,pw_hash=$3 WHERE id=$4", [upgraded.algo, upgraded.salt, upgraded.hash, user.id]);

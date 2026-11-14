@@ -29,3 +29,15 @@ CREATE TABLE IF NOT EXISTS npi_sessions (
 );
 
 CREATE INDEX IF NOT EXISTS npi_sessions_expiry_idx ON npi_sessions (expires_at);
+
+-- At most one row per real account plus a single shared unknown-user bucket.
+CREATE TABLE IF NOT EXISTS npi_login_limits (
+  bucket text PRIMARY KEY,
+  user_id text UNIQUE REFERENCES npi_users(id) ON DELETE CASCADE,
+  attempts smallint NOT NULL CHECK (attempts BETWEEN 1 AND 5),
+  expires_at timestamptz NOT NULL,
+  attempt_token uuid NOT NULL,
+  CHECK (bucket = CASE WHEN user_id IS NULL THEN 'unknown' ELSE 'user:' || user_id END)
+);
+
+CREATE INDEX IF NOT EXISTS npi_login_limits_expiry_idx ON npi_login_limits (expires_at);

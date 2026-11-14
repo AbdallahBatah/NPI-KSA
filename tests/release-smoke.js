@@ -291,6 +291,29 @@ async function main() {
   await sql("TRUNCATE npi_sessions, npi_users, npi_records CASCADE");
   console.log("PASS database reset does not reopen public setup; concurrent owner requests create exactly one administrator");
 
+  await require("./support/login-protection")({
+    sql, base,
+    async startInstance() {
+      const instancePort = await unusedPort();
+      const process = launch("npm", ["start"], release, {
+        NODE_ENV: "production", PORT: String(instancePort), DATABASE_URL: databaseUrl,
+      });
+      const instanceBase = `http://127.0.0.1:${instancePort}`;
+      for (let i = 0; i < 100; i++) {
+        assert.equal(process.exitCode, null, process.output);
+        try {
+          if ((await request(instanceBase, "/")).status === 200) return { process, base: instanceBase };
+        } catch {}
+        await sleep(100);
+      }
+      assert.fail(`Second instance did not start:\n${process.output}`);
+    },
+    async stopInstance(instance) {
+      kill(instance.process);
+      await instance.process.finished;
+    },
+  });
+
   await sql("ALTER TABLE npi_sessions RENAME TO hidden_sessions");
   await missingSchema("/api/session", headers);
   await sql("ALTER TABLE hidden_sessions RENAME TO npi_sessions");

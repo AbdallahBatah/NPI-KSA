@@ -71,6 +71,16 @@ no TCP listener). It ignores existing database credentials and secrets, checks
 temporary release/database afterward. It never applies DDL to development or
 production. Missing schema is reported as HTTP 503 with
 `DATABASE_SCHEMA_MISSING`; server logs point to the normal schema migration.
+The release check also exercises login throttling across two server processes,
+restart persistence, parallel guesses, expiration, cleanup and fail-closed behavior.
+
+Login protection uses PostgreSQL, not process memory or forwarded IP headers.
+Each account allows five attempts; the fifth starts a 60-second lockout.
+Attempts are reserved atomically before password verification, so concurrent
+guesses count toward the limit. A successful login clears its reservation only
+if no later attempt has arrived. Partial failures expire after 60 seconds.
+Unknown usernames share one separate bucket; storage is bounded to one row per
+account plus one unknown bucket, with expired entries cleaned on login requests.
 
 The repository's existing Playwright tests are under `tests/`. `npm test` runs
 the imported test suite; its scripts may require adapting their original paths
