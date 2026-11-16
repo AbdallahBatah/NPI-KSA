@@ -28,7 +28,7 @@ const FAKE=()=>{window.__npiFakeSample=Object.assign(async function(input,opts){
  await as('gm','home');
  // new opportunity
  await pg.locator('.qa',{hasText:'فرصة جديدة'}).click();await pg.waitForTimeout(150);check((await pg.locator('#sheet h2,#sheet header').first().innerText()).includes('فرصة جديدة'),tag+' opportunity sheet');
- await pg.fill('#sheet [data-k="client.name"]','مزارع الواحة '+tag);await pg.fill('#sheet [data-k="client.phone"]','0551112222');await pg.fill('#sheet [data-k="client.site"]','الأحساء');await sheetBtn('حفظ');await shErr();
+ await pg.fill('#sheet [data-k="client.name"]','مزارع الواحة '+tag);await pg.fill('#sheet [data-k="client.phone"]','0551112222');await pg.selectOption('#sheet select[data-k="client.city"]','الأحساء');await pg.fill('#sheet [data-k="client.site"]','مزرعة الواحة');await sheetBtn('حفظ');await shErr();
  let s=await st();const op=Object.values(s.projects).find(p=>p.client?.name==='مزارع الواحة '+tag);check(op&&op.stage==='study'&&op.neg==='accepted',tag+' opportunity created at study stage');
  // work order
  await as('gm','home');await pg.locator('.qa',{hasText:'أمر عمل جديد'}).click();await pg.waitForTimeout(150);
@@ -46,7 +46,7 @@ const FAKE=()=>{window.__npiFakeSample=Object.assign(async function(input,opts){
  // ---- admin
  await as('gm','admin');const at=await pg.locator('.tabs button').allInnerTexts();check(at.length===5,tag+' admin tabs '+at.join('|'));await ovf('admin-users');await pg.screenshot({path:`out6/${tag}-admin-users.png`});
  for(const k of ['roles','matrix','org','audit']){await pg.click(`[data-act="atab"][data-k="${k}"]`);await pg.waitForTimeout(150);await ovf('admin-'+k);await pg.screenshot({path:`out6/${tag}-admin-${k}.png`,fullPage:tag==='lap'})}
- check(await pg.locator('table tbody tr').count()>3,tag+' audit has entries');
+ const audN=await pg.locator('table tbody tr:visible, .mcard:visible').count();if(audN<=3)console.log('  audit rows',audN,(await pg.locator('.content').innerText()).slice(0,400));check(audN>3,tag+' audit has entries');
  // custom role
  await pg.click('[data-act="atab"][data-k="roles"]');await pg.click('[data-act="editRole"]:not([data-id])');await pg.waitForTimeout(150);await ovf('role-sheet');
  await pg.fill('#sheet [data-k="name"]','مشرف موقع');await pg.selectOption('#sheet [data-k="base"]','eng');await pg.waitForTimeout(150);
