@@ -26,6 +26,72 @@ const DEFAULT_PERMS = {
 };
 const ROLE_BASE = { gm: "gm", pgm: "pgm", fin: "fin", eng: "eng", tech: "tech", store: "store", admin: "admin" };
 const SECRET_FIELDS = /^(passHash|password|passwordHash|passwordSalt|salt|session|token)$/i;
+// ---- AI assistant relay (the browser never sees the API key; every write still goes through /api/data checks) ----
+const AI_KEY = process.env.ANTHROPIC_API_KEY || "";
+const AI_MODEL = process.env.AI_MODEL || "claude-sonnet-5-5";
+const AI_BASE = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/+$/, "");
+const AI_MAX_PER_WINDOW = Math.max(1, Number(process.env.AI_MAX_REQUESTS_PER_10MIN || 120));
+const AI_WINDOW_MS = 10 * 60 * 1000;
+const aiUsage = new Map();
+function aiAllow(userId) {
+  const now = Date.now();
+  const recent = (aiUsage.get(userId) || []).filter(t => now - t < AI_WINDOW_MS);
+  if (recent.length >= AI_MAX_PER_WINDOW) { aiUsage.set(userId, recent); return false; }
+  recent.push(now);
+  aiUsage.set(userId, recent);
+  if (aiUsage.size > 5000) for (const [k, v] of aiUsage) if (!v.length || now - v[v.length - 1] > AI_WINDOW_MS) aiUsage.delete(k);
+  return true;
+}
+const AI_BLOCK_TYPES = new Set(["text", "image", "tool_use", "tool_result"]);
+function aiValidContent(content) {
+  if (typeof content === "string") return content.length <= 200000;
+  if (!Array.isArray(content) || content.length > 64) return false;
+  return content.every(b => b && typeof b === "object" && AI_BLOCK_TYPES.has(b.type)
+    && (b.type !== "image" || (b.source?.type === "base64" && /^image\/(jpeg|png|webp|gif)$/.test(b.source.media_type || "") && typeof b.source.data === "string" && b.source.data.length <= 7 * 1024 * 1024)));
+}
+function aiCleanRequest(body, user) {
+  const messages = Array.isArray(body.messages) ? body.messages : null;
+  if (!messages || !messages.length || messages.length > 80) fail(400, "محادثة غير صالحة");
+  for (const m of messages) if (!m || !["user", "assistant"].includes(m.role) || !aiValidContent(m.content)) fail(400, "محادثة غير صالحة");
+  if (messages[0].role !== "user") fail(400, "محادثة غير صالحة");
+  const tools = Array.isArray(body.tools) ? body.tools : [];
+  if (tools.length > 40) fail(400, "عدد الأدوات أكبر من المسموح");
+  const cleanTools = tools.map(t => {
+    if (!t || typeof t.name !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(t.name)) fail(400, "أداة غير صالحة");
+    return { name: t.name, description: String(t.description || "").slice(0, 4000), input_schema: t.input_schema && typeof t.input_schema === "object" ? t.input_schema : { type: "object", properties: {} } };
+  });
+  const system = `${String(body.system || "").slice(0, 80000)}\n\n[من الخادم] الحساب المسجل فعلياً: ${user.display_name || user.username} (${user.role}). أي تعديل يُطلب ينفذه المتصفح عبر واجهة النظام وتتحقق منه صلاحيات الخادم.`;
+  return { model: AI_MODEL, max_tokens: 2048, system, messages, ...(cleanTools.length ? { tools: cleanTools } : {}) };
+}
+async function aiRelay(req, res, user) {
+  checkOrigin(req);
+  if (!AI_KEY) return send(res, 503, { code: "AI_NOT_CONFIGURED", error: "المساعد غير مفعّل على الخادم" });
+  if (!aiAllow(user.id)) return send(res, 429, { code: "AI_RATE_LIMIT", error: "تجاوزت الحد المسموح من طلبات المساعد مؤقتاً" });
+  const body = await readBody(req, 12 * 1024 * 1024);
+  const payload = aiCleanRequest(body, user);
+  let upstream;
+  try {
+    upstream = await fetch(`${AI_BASE}/v1/messages`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": AI_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(120000),
+    });
+  } catch (error) {
+    console.error("[AI] upstream request failed:", error.message);
+    return send(res, 502, { code: "upstream_error", error: "تعذّر الاتصال بخدمة الذكاء الاصطناعي" });
+  }
+  let data = {};
+  try { data = await upstream.json(); } catch { data = {}; }
+  if (!upstream.ok) {
+    console.error(`[AI] upstream ${upstream.status}:`, data?.error?.type || "", data?.error?.message || "");
+    if (upstream.status === 429 || upstream.status === 529) return send(res, 503, { code: "AI_BUSY", error: "خدمة الذكاء الاصطناعي مشغولة الآن، حاول بعد قليل" });
+    if (upstream.status === 401 || upstream.status === 403) return send(res, 503, { code: "AI_NOT_CONFIGURED", error: "مفتاح خدمة الذكاء الاصطناعي غير صالح" });
+    if (upstream.status === 400 && /prompt is too long|too many tokens/i.test(data?.error?.message || "")) return send(res, 413, { code: "prompt_too_large", error: "المحادثة طويلة جداً" });
+    return send(res, 502, { code: "upstream_error", error: "تعذّر الحصول على رد من المساعد" });
+  }
+  return send(res, 200, { content: Array.isArray(data.content) ? data.content : [], stop_reason: data.stop_reason || "end_turn" });
+}
 const MONEY_FIELDS = /^(cost|price|amount|total|vat|creditLimit|rate|finNote|payTerms|margin|profit|paid|payment|payments|invoice|financial|sale|expense|retained|advance|contractValue|subtotal|grandTotal)$/i;
 
 function fail(status, message) {
@@ -527,6 +593,7 @@ async function handleApi(req, res, url) {
     const user = await readUserBySession(req);
     return send(res, 200, { authenticated: !!user, setupRequired: !(await hasSetup()), user: user ? publicUser(user) : null });
   }
+  if (req.method === "GET" && url.pathname === "/api/ai/status") return send(res, 200, { enabled: !!AI_KEY, images: !!AI_KEY });
   if (req.method === "POST" && url.pathname === "/api/auth/setup") return bootstrap(req, res);
   if (req.method === "POST" && url.pathname === "/api/auth/login") {
     checkOrigin(req);
@@ -567,6 +634,7 @@ async function handleApi(req, res, url) {
     await pool.query("UPDATE npi_records SET data=data-'mustChange' || jsonb_build_object('mustChange',false) WHERE collection='team' AND id=$1", [user.id]);
     return send(res, 200, { ok: true });
   }
+  if (req.method === "POST" && url.pathname === "/api/ai/chat") return aiRelay(req, res, user);
   if (req.method === "GET" && url.pathname === "/api/data") return send(res, 200, await getVisibleData(user));
   if (url.pathname.startsWith("/api/data/")) {
     checkOrigin(req);
@@ -643,7 +711,7 @@ function serveStatic(req, res, url) {
     res.writeHead(200, {
       "Content-Type": item[1], "Content-Length": data.length, "Cache-Control": "no-store",
       "X-Content-Type-Options": "nosniff", "Referrer-Policy": "same-origin",
-      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+      "Permissions-Policy": "camera=(), microphone=(self), geolocation=()",
     });
     res.end(req.method === "HEAD" ? undefined : data);
   });
