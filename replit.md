@@ -56,8 +56,31 @@
   first sign in.
 - Preserve `npi-local-v1` until the shared records have been checked. Exports
   from other browsers should be reviewed and reconciled separately.
-- Uploaded documents and the AI assistant remain unavailable in this hosting
-  mode without separate storage/API integrations.
+- Uploaded documents remain unavailable in this hosting mode without a separate
+  storage integration.
+
+## AI assistant (chat + voice)
+
+- Enabled when the `ANTHROPIC_API_KEY` secret is set (restart after adding it).
+  Optional: `AI_MODEL` (default `claude-sonnet-5-5`), `AI_MAX_REQUESTS_PER_10MIN`
+  (default 120 per user, per server instance), `ANTHROPIC_BASE_URL` (tests only).
+- `GET /api/ai/status` reports whether it is enabled. `POST /api/ai/chat` requires a
+  signed-in session and same-origin request, validates the conversation shape
+  (roles, block types, image types/sizes, tool definitions), stamps the real account
+  into the system prompt and relays to the Anthropic Messages API. The key never
+  reaches the browser.
+- The relay performs no writes. The browser runs the model's tools: read tools use
+  the user's already-filtered data; write tools only add steps to a plan. After the
+  user approves the bullet summary, each step runs through the same UI actions as
+  the buttons, so every write still goes through `/api/data` permission checks.
+- Voice uses the browser's Web Speech API (`ar-SA`); the page's Permissions-Policy
+  now allows `microphone=(self)`. No audio is uploaded to this server.
+- `node tests/ai-server.browser.js` (with `TEST_DATABASE_URL` pointing at an empty
+  database with `db/schema.sql` applied) runs the real server against a scripted
+  Anthropic stand-in: voice → plan → approval → server-side writes, permission
+  refusals, forged writes, and upstream errors.
+- Demo seed note: the seed's `gm` username is shorter than the server's 3-character
+  minimum, so it is not imported; the owner setup account becomes the GM.
 - The optional demo seed is served at `/seed/seed.json`; see README.md for the
   manual import procedure. Do not use demo credentials for real company data.
 - The web server deliberately serves only the app and optional demo seed, not

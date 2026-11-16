@@ -66,3 +66,14 @@ Secrets are stripped (`cleanSecrets`) and money fields redacted for users withou
 ### Denial of Service
 `loginFailures` map grows unbounded and request bodies allow up to 50MB; these are
 the main DoS considerations.
+
+### AI assistant relay (`/api/ai/chat`)
+Authenticated, same-origin only, per-user request cap (in-memory per instance), body
+limit 12MB with validated message/tool/image shapes. The relay never writes data and
+holds the only copy of `ANTHROPIC_API_KEY`. Model output can only propose plan steps
+in the browser; execution requires the user's approval and every resulting write is
+authorized by `/api/data` like any manual action. Prompt-injection from records or
+images can at most propose steps the same user could take manually and must approve.
+Residual risks: cost abuse by a signed-in user (bounded by the per-user cap, which is
+per process under Autoscale) and data sent to the AI provider is the user's visible data.
+
