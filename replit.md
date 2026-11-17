@@ -80,6 +80,25 @@
   it does not launch the application server.
 - Publishing configuration changes take effect only after publishing again.
 
+## Workflow permissions (server)
+
+- `projects.create` (new): add leads, opportunities and projects and run lead
+  negotiation. Default for GM, admin, projects manager and finance manager.
+  Roles saved before this permission existed get it from their role default
+  (role definitions now record the permission list they were saved with).
+- New projects are authorised by `projects.create` and may only start at the
+  `lead` or `study` stage. (Previously the "can see this project" check ran
+  first and rejected every new project, so no one could add a lead/opportunity.)
+- Roles that can see a project but not edit it (e.g. store) may only append to
+  its activity log; any other change is still rejected.
+- Users without `see.money` create receipts/stock movements without prices; the
+  server fills them from the purchase order (or the item's reference cost) so
+  supplier invoices and payments have the right values.
+- `npm run test:server` runs the full cycle (`t7-server.browser.js`, 73 checks)
+  and alternative paths (`t9-server.browser.js`, 45 checks) against the real
+  server, logging in through the login screen for every hand-off. Each needs
+  `TEST_DATABASE_URL` pointing at an empty database with `db/schema.sql`.
+
 ## Tests
 
 Run `npm run test:release` before publishing. It requires Node/npm, Python 3,

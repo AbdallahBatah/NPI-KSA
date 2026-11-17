@@ -16,16 +16,18 @@ const COLLECTIONS = [
 ];
 const PROJECT_STAGES = ["lead", "study", "budget", "budget_review", "quote", "contract_review", "setup", "planning", "execution", "handover_review", "close_review", "closed"];
 const DEFAULT_PERMS = {
-  gm: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export", "admin.users", "admin.roles", "admin.matrix", "admin.org", "admin.audit", "admin.demo"],
-  admin: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export", "admin.users", "admin.roles", "admin.matrix", "admin.org", "admin.audit", "admin.demo"],
-  pgm: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export"],
-  fin: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "data.import", "data.export"],
+  gm: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export", "admin.users", "admin.roles", "admin.matrix", "admin.org", "admin.audit", "admin.demo"],
+  admin: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export", "admin.users", "admin.roles", "admin.matrix", "admin.org", "admin.audit", "admin.demo"],
+  pgm: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export"],
+  fin: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "data.import", "data.export"],
   tech: ["view.pipeline", "view.clients", "projects.all", "view.stock", "view.purchasing", "see.money", "data.export"],
   eng: ["view.stock", "data.export"],
   store: ["view.stock", "view.purchasing", "items.manage", "data.import", "data.export"],
 };
 const ROLE_BASE = { gm: "gm", pgm: "pgm", fin: "fin", eng: "eng", tech: "tech", store: "store", admin: "admin" };
 const SECRET_FIELDS = /^(passHash|password|passwordHash|passwordSalt|salt|session|token)$/i;
+const PERMS_ADDED_V2 = ["projects.create"];
+const ALL_PERMS_V1 = [...new Set(Object.values(DEFAULT_PERMS).flat())].filter(p => !PERMS_ADDED_V2.includes(p));
 const MONEY_FIELDS = /^(cost|price|amount|total|vat|creditLimit|rate|finNote|payTerms|margin|profit|paid|payment|payments|invoice|financial|sale|expense|retained|advance|contractValue|subtotal|grandTotal)$/i;
 
 function fail(status, message) {
@@ -96,6 +98,34 @@ function redactMoney(value) {
   for (const [key, val] of Object.entries(value)) if (!MONEY_FIELDS.test(key)) out[key] = redactMoney(val);
   return out;
 }
+// Users who cannot see prices (store, engineers) create receipts and stock movements without them.
+// Fill the values from the purchase order / receipt / item so finance and stock valuation stay correct.
+function fillHiddenPrices(col, record, all) {
+  const itemCost = itemId => Number(all.items?.[itemId]?.cost) || 0;
+  if (col === "grns" && Array.isArray(record.lines)) {
+    const po = record.poId ? all.prs?.[record.poId] : null;
+    const rate = Number(po?.rate) || 1;
+    const lines = record.lines.map(line => {
+      if (Number(line.price)) return line;
+      const pl = po?.lines?.find(x => x.itemId === line.itemId);
+      const price = pl && Number(pl.price) ? Math.round(Number(pl.price) * rate * 100) / 100 : itemCost(line.itemId);
+      return { ...line, price };
+    });
+    return { ...record, lines };
+  }
+  if (col === "moves" && !Number(record.cost)) {
+    if (record.kind === "grn") {
+      const grn = Object.values(all.grns || {}).find(g => g.code === record.ref);
+      const line = grn?.lines?.find(x => x.itemId === record.itemId);
+      const po = grn?.poId ? all.prs?.[grn.poId] : null;
+      const pl = po?.lines?.find(x => x.itemId === record.itemId);
+      const cost = Number(line?.price) || (pl && Number(pl.price) ? Number(pl.price) * (Number(po.rate) || 1) : 0) || itemCost(record.itemId);
+      return { ...record, cost };
+    }
+    return { ...record, cost: itemCost(record.itemId) };
+  }
+  return record;
+}
 function preserveMoney(oldValue, newValue) {
   if (Array.isArray(oldValue) && Array.isArray(newValue)) {
     return newValue.map((next, i) => {
@@ -132,6 +162,11 @@ async function permissionsFor(user) {
   const info = defs[user.role] || {};
   const base = ROLE_BASE[user.role] || (info.base && ROLE_BASE[info.base] ? info.base : "eng");
   const perms = new Set(info.deleted ? [] : (info.perms || DEFAULT_PERMS[base] || []));
+  // Permissions introduced after a role was last saved fall back to that role's default.
+  if (!info.deleted && info.perms) {
+    const known = new Set(Array.isArray(info.known) ? info.known : ALL_PERMS_V1);
+    for (const p of DEFAULT_PERMS[base] || []) if (!known.has(p)) perms.add(p);
+  }
   if (base === "gm" || base === "admin") {
     perms.add("admin.users");
     perms.add("admin.roles");
@@ -283,17 +318,35 @@ function canWriteMeta(id, perms) {
   if (id === "demo") return perms.has("admin.demo");
   return false;
 }
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") return `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${stableJson(value[k])}`).join(",")}}`;
+  return JSON.stringify(value);
+}
+function isLogOnlyChange(existing, record) {
+  const rest = v => { const { log, id, ...other } = redactMoney(v || {}); return stableJson(other); };
+  const before = Array.isArray(existing.log) ? existing.log : [];
+  const after = Array.isArray(record.log) ? record.log : [];
+  if (after.length < before.length || after.length > before.length + 5) return false;
+  const kept = before.every(entry => after.some(x => stableJson(x) === stableJson(entry)));
+  return kept && rest(existing) === rest(record);
+}
 function canWriteCollection(col, record, user, perms, base, existing, all) {
   if (col === "team") return perms.has("admin.users");
   if (col === "meta") return canWriteMeta(record.id, perms);
   if (col === "audit") return false;
+  if (col === "projects") {
+    // A new project does not exist yet, so it cannot be "visible"; creation is its own permission and
+    // may only start the cycle (lead or opportunity), never jump to a later stage.
+    if (!existing) return perms.has("projects.create") && ["lead", "study"].includes(record.stage);
+    if (!canSeeProject(existing, user, perms, base)) return false;
+    if (perms.has("projects.all")) return true;
+    if (existing.setup?.engineerId === user.id && record.setup?.engineerId === user.id) return true;
+    // Store and other roles may only append to the activity log of a project they can see.
+    return isLogOnlyChange(existing, record);
+  }
   const projectIds = new Set([...recordProjectIds(col, record, all), ...recordProjectIds(col, existing || {}, all)]);
   if ([...projectIds].some(projectId => !canSeeProject(all.projects?.[projectId], user, perms, base))) return false;
-  if (col === "projects") {
-    if (perms.has("projects.all")) return true;
-    if (existing && existing.setup?.engineerId === user.id && record.setup?.engineerId === user.id) return true;
-    return !existing && base === "gm";
-  }
   if (col === "clients") return perms.has("clients.manage");
   if (col === "items") return perms.has("items.manage");
   if (col === "suppliers") return perms.has("suppliers.manage");
@@ -592,6 +645,7 @@ async function handleApi(req, res, url) {
         return send(res, 200, { ok: true, record: saved });
       }
       let safe = cleanSecrets(record);
+      if (!existing && !permsInfo.perms.has("see.money")) safe = fillHiddenPrices(col, safe, all);
       if (existing && !permsInfo.perms.has("see.money")) {
         if (col === "projects") {
           safe = cleanSecrets(existing);
