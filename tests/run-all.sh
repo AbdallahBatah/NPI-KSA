@@ -8,7 +8,7 @@ run(){ echo "=== $*"; node "$@"; }
 run --test bootstrap-owner.test.js
 run bootstrap-owner.browser.js
 run smoke.js
-for t in t1 t2 t3 t4 t5 t6 t10 t11; do run $t.js; done
+for t in t1 t2 t3 t4 t5 t6 t10 t11 t12; do run $t.js; done
 run ai-server.browser.js
 run t7.js; run t7.js 390 844
 run t9.js; run t9.js 390 844

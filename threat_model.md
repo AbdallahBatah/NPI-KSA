@@ -77,3 +77,18 @@ images can at most propose steps the same user could take manually and must appr
 Residual risks: cost abuse by a signed-in user (bounded by the per-user cap, which is
 per process under Autoscale) and data sent to the AI provider is the user's visible data.
 
+
+### Material sales to outside buyers (`sales`, stock moves of kind `sale`)
+Stock leaves the company and an invoice is issued, so the rules are enforced in
+`canWriteSale` / `canWriteSaleMove`, not only in the browser. The preparer (store) can
+never set prices or invoice: amounts sent by a user without `see.money` are dropped and
+amounts are redacted from what that user reads. Only `sales.approve` + `see.money` can
+deduct stock, only against a request still awaiting finance, never above the requested
+quantity or the main-store balance, and an invoice is accepted only once every line is
+deducted in full and the totals add up. Issued invoices are immutable except for one
+appended payment at a time, capped at the invoice total. Residual risks: preparer and
+approver may be the same person when a role holds both permissions (GM/admin by
+default); the stock deduction and the invoice are separate writes, so a failure between
+them leaves deducted stock with a request still open (the approval can be retried and
+does not deduct twice); invoice numbers are checked for uniqueness but two approvals
+at the same instant are not serialized. The invoice is not a ZATCA e-invoice.

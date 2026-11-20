@@ -13,7 +13,7 @@
     "test:smoke": "node tests/smoke.js",
     "test:release": "node tests/release-smoke.js",
     "test:ai": "node tests/ai-server.browser.js",
-    "test:server": "node tests/t7-server.browser.js && node tests/t9-server.browser.js"
+    "test:server": "node tests/t7-server.browser.js && node tests/t9-server.browser.js && node tests/t12-server.browser.js"
   },
   "devDependencies": {
     "playwright": "^1.65.0"

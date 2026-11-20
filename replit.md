@@ -147,3 +147,22 @@ account plus one unknown bucket, with expired entries cleaned on login requests.
 The repository's existing Playwright tests are under `tests/`. `npm test` runs
 the imported test suite; its scripts may require adapting their original paths
 and browser executable assumptions before they can run on Replit.
+
+## Material sales to outside buyers (server rules)
+
+- Collection `sales`; no schema change (records live in `npi_records`). New permissions:
+  `sales.create` (default: store, GM, admin) and `sales.approve` (default: finance, GM, admin). Roles saved
+  before this release receive them through the same "newer permission" fallback as `projects.create`.
+- Read: holders of either permission, or `view.finance` + `see.money`. Users without `see.money` get the
+  record with every amount removed, and any price they send on create is dropped.
+- Create: `sales.create`, status `fin`, own user id, at least one line, no invoice fields.
+- While `fin` / `rejected`: the preparer side may edit, resubmit or cancel; `sales.approve` + `see.money` may
+  reject (reason required) or invoice. Invoicing requires unchanged buyer and quantities, a unique invoice
+  number, SAR/JOD/USD with a rate, `local` (15%) or `export` (0%), a price on every line, totals that add up,
+  and stock moves already written for every line.
+- Stock moves of kind `sale` (`MAIN` → `SALE`) are accepted only from `sales.approve`, only for a sale still
+  in `fin`, never above the requested quantity, and never above the main-store balance.
+- After invoicing only one new payment at a time may be appended, never above the total; a paid invoice is closed.
+- In server mode PDF and Excel files download straight from the browser (blob download).
+- `node tests/t12-server.browser.js` (with `TEST_DATABASE_URL`) covers these rules against the real server.
+

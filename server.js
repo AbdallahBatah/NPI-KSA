@@ -12,17 +12,17 @@ const scrypt = promisify(crypto.scrypt);
 const COLLECTIONS = [
   "team", "items", "suppliers", "templates", "projects", "mreqs", "issues",
   "prs", "grns", "returns", "dlogs", "overruns", "claims", "moves", "costs",
-  "spay", "meta", "clients", "audit", "ftasks",
+  "spay", "meta", "clients", "audit", "ftasks", "sales",
 ];
 const PROJECT_STAGES = ["lead", "study", "budget", "budget_review", "quote", "contract_review", "setup", "planning", "execution", "handover_review", "close_review", "closed"];
 const DEFAULT_PERMS = {
-  gm: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export", "admin.users", "admin.roles", "admin.matrix", "admin.org", "admin.audit", "admin.demo"],
-  admin: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export", "admin.users", "admin.roles", "admin.matrix", "admin.org", "admin.audit", "admin.demo"],
+  gm: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export", "admin.users", "admin.roles", "admin.matrix", "admin.org", "admin.audit", "admin.demo", "sales.create", "sales.approve"],
+  admin: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export", "admin.users", "admin.roles", "admin.matrix", "admin.org", "admin.audit", "admin.demo", "sales.create", "sales.approve"],
   pgm: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export"],
-  fin: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "data.import", "data.export"],
+  fin: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "data.import", "data.export", "sales.approve"],
   tech: ["view.pipeline", "view.clients", "projects.all", "view.stock", "view.purchasing", "see.money", "data.export"],
   eng: ["view.stock", "data.export"],
-  store: ["view.stock", "view.purchasing", "items.manage", "data.import", "data.export"],
+  store: ["view.stock", "view.purchasing", "items.manage", "data.import", "data.export", "sales.create"],
 };
 const ROLE_BASE = { gm: "gm", pgm: "pgm", fin: "fin", eng: "eng", tech: "tech", store: "store", admin: "admin" };
 const SECRET_FIELDS = /^(passHash|password|passwordHash|passwordSalt|salt|session|token)$/i;
@@ -92,7 +92,7 @@ async function aiRelay(req, res, user) {
   }
   return send(res, 200, { content: Array.isArray(data.content) ? data.content : [], stop_reason: data.stop_reason || "end_turn" });
 }
-const PERMS_ADDED_V2 = ["projects.create"];
+const PERMS_ADDED_V2 = ["projects.create", "sales.create", "sales.approve"];
 const ALL_PERMS_V1 = [...new Set(Object.values(DEFAULT_PERMS).flat())].filter(p => !PERMS_ADDED_V2.includes(p));
 const MONEY_FIELDS = /^(cost|price|amount|total|vat|creditLimit|rate|finNote|payTerms|margin|profit|paid|payment|payments|invoice|financial|sale|expense|retained|advance|contractValue|subtotal|grandTotal)$/i;
 
@@ -313,6 +313,7 @@ function collectionAllowedRead(col, user, perms) {
   if (["claims", "costs", "spay"].includes(col)) return perms.has("see.money") && perms.has("view.finance");
   if (["prs", "grns"].includes(col)) return perms.has("view.purchasing") || perms.has("see.money");
   if (col === "clients") return perms.has("view.clients") || perms.has("clients.manage") || perms.has("projects.all");
+  if (col === "sales") return canReadSales(perms);
   if (col === "meta") return true;
   return true;
 }
@@ -397,6 +398,98 @@ function isLogOnlyChange(existing, record) {
   const kept = before.every(entry => after.some(x => stableJson(x) === stableJson(entry)));
   return kept && rest(existing) === rest(record);
 }
+// ---- Material sales to outside buyers (not tied to a project) ----
+// The store prepares buyer + quantities; whoever holds sales.approve (finance) prices it, issues the invoice
+// and only then is stock deducted. Collections are appended afterwards and nothing else may change.
+const SALE_OPEN = ["fin", "rejected"];
+const SALE_ISSUED = ["invoiced", "partial", "paid"];
+const near = (a, b) => Math.abs(Number(a) - Number(b)) < 0.005;
+function canReadSales(perms) {
+  return perms.has("sales.create") || perms.has("sales.approve") || (perms.has("view.finance") && perms.has("see.money"));
+}
+function saleLinesOk(lines) {
+  return Array.isArray(lines) && lines.length > 0 && lines.length <= 200
+    && lines.every(l => l && typeof l.itemId === "string" && l.itemId && Number(l.qty) > 0)
+    && new Set(lines.map(l => l.itemId)).size === lines.length;
+}
+function saleMovedQty(all, sale, itemId) {
+  let qty = 0;
+  for (const m of Object.values(all.moves || {})) {
+    if (m.kind === "sale" && m.saleId === sale.id && m.itemId === itemId) qty += Number(m.qty) || 0;
+  }
+  return qty;
+}
+function mainBalance(all, itemId) {
+  let balance = 0;
+  for (const m of Object.values(all.moves || {})) {
+    if (m.itemId !== itemId) continue;
+    if (m.to === "MAIN") balance += Number(m.qty) || 0;
+    if (m.from === "MAIN") balance -= Number(m.qty) || 0;
+  }
+  return balance;
+}
+function canWriteSaleMove(record, existing, perms, all) {
+  if (existing || !perms.has("sales.approve") || !perms.has("see.money")) return false;
+  const sale = all.sales?.[record.saleId];
+  if (!sale || sale.status !== "fin" || record.ref !== sale.code) return false;
+  if (record.from !== "MAIN" || record.to !== "SALE") return false;
+  const line = (sale.lines || []).find(l => l.itemId === record.itemId);
+  const qty = Number(record.qty);
+  if (!line || !(qty > 0)) return false;
+  if (saleMovedQty(all, sale, record.itemId) + qty > Number(line.qty) + 1e-6) return false;
+  return mainBalance(all, record.itemId) + 1e-6 >= qty;
+}
+function canWriteSale(record, user, perms, existing, all) {
+  const canCreate = perms.has("sales.create");
+  const canApprove = perms.has("sales.approve") && perms.has("see.money");
+  const buyerOk = typeof record.buyer?.name === "string" && record.buyer.name.trim().length > 0;
+  if (!existing) {
+    return canCreate && record.status === "fin" && record.by === user.id && buyerOk && saleLinesOk(record.lines)
+      && !record.invoiceNo && !record.finBy;
+  }
+  if (SALE_OPEN.includes(existing.status)) {
+    if (existing.status === "fin" && canApprove && record.status === "rejected") {
+      return typeof record.rejectNote === "string" && record.rejectNote.trim().length > 0 && sameSaleRequest(existing, record);
+    }
+    if (existing.status === "fin" && canApprove && record.status === "invoiced") {
+      const invoiceNo = String(record.invoiceNo || "").trim();
+      if (!invoiceNo || !sameSaleRequest(existing, record)) return false;
+      if (Object.values(all.sales || {}).some(s => s.id !== existing.id && String(s.invoiceNo || "").trim() === invoiceNo)) return false;
+      if (!["SAR", "JOD", "USD"].includes(record.currency) || !(Number(record.rate) > 0)) return false;
+      if (record.currency === "SAR" && Number(record.rate) !== 1) return false;
+      if (!["local", "export"].includes(record.taxType)) return false;
+      if (!record.lines.every(l => Number(l.price) > 0)) return false;
+      if (Array.isArray(record.payments) && record.payments.length) return false;
+      const sub = Math.round(record.lines.reduce((t, l) => t + Number(l.qty) * Number(l.price), 0) * 100) / 100;
+      const vat = record.taxType === "local" ? Math.round(sub * 0.15 * 100) / 100 : 0;
+      if (!near(record.amount, sub) || !near(record.vat, vat) || !near(record.total, sub + vat)) return false;
+      // Stock must already be deducted, in full, for every line of this sale.
+      return existing.lines.every(l => near(saleMovedQty(all, existing, l.itemId), l.qty));
+    }
+    // The preparer side: edit / resubmit / cancel, never invoice.
+    if (!canCreate || !["fin", "cancelled"].includes(record.status)) return false;
+    if (record.invoiceNo || record.finBy || record.by !== existing.by || record.code !== existing.code) return false;
+    return record.status === "cancelled" || (buyerOk && saleLinesOk(record.lines));
+  }
+  if (SALE_ISSUED.includes(existing.status) && existing.status !== "paid") return canApprove && isSalePaymentOnly(existing, record);
+  return false;
+}
+function sameSaleRequest(existing, record) {
+  const key = v => stableJson({ code: v.code, by: v.by, buyer: v.buyer || null, lines: (v.lines || []).map(l => [l.itemId, Number(l.qty)]) });
+  return key(existing) === key(record);
+}
+function isSalePaymentOnly(existing, record) {
+  const rest = v => { const { payments, status, id, ...other } = v || {}; return stableJson(other); };
+  const before = Array.isArray(existing.payments) ? existing.payments : [];
+  const after = Array.isArray(record.payments) ? record.payments : [];
+  if (after.length !== before.length + 1) return false;
+  if (!before.every((p, i) => stableJson(p) === stableJson(after[i]))) return false;
+  const added = Number(after[after.length - 1]?.amount);
+  const paid = after.reduce((t, p) => t + (Number(p.amount) || 0), 0);
+  if (!(added > 0) || paid > Number(existing.total) + 0.01) return false;
+  const expected = paid >= Number(existing.total) - 0.01 ? "paid" : "partial";
+  return record.status === expected && rest(existing) === rest(record);
+}
 function canWriteCollection(col, record, user, perms, base, existing, all) {
   if (col === "team") return perms.has("admin.users");
   if (col === "meta") return canWriteMeta(record.id, perms);
@@ -446,7 +539,9 @@ function canWriteCollection(col, record, user, perms, base, existing, all) {
     return base === "pgm" || base === "gm";
   }
   if (col === "claims" || col === "costs" || col === "spay") return perms.has("see.money") && perms.has("view.finance");
+  if (col === "sales") return canWriteSale(record, user, perms, existing, all);
   if (col === "moves") {
+    if (record.kind === "sale" || existing?.kind === "sale") return canWriteSaleMove(record, existing, perms, all);
     if (!perms.has("view.stock")) return false;
     if (base === "eng") {
       if (!["issue", "transfer"].includes(record.kind) || projectIds.size !== 1) return false;
@@ -713,7 +808,7 @@ async function handleApi(req, res, url) {
         return send(res, 200, { ok: true, record: saved });
       }
       let safe = cleanSecrets(record);
-      if (!existing && !permsInfo.perms.has("see.money")) safe = fillHiddenPrices(col, safe, all);
+      if (!existing && !permsInfo.perms.has("see.money")) safe = col === "sales" ? redactMoney(safe) : fillHiddenPrices(col, safe, all);
       if (existing && !permsInfo.perms.has("see.money")) {
         if (col === "projects") {
           safe = cleanSecrets(existing);
