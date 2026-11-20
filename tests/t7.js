@@ -27,10 +27,10 @@ let fails=0,n=0;const ok=(c,m)=>{n++;console.log(c?'PASS':'FAIL',TAG,m);if(!c)fa
 
  // 1) PGM registers lead
  await as('pgm','pipeline');await click('[data-act="newLead"]');
- await pg.fill('#sheet [data-k="client.name"]','شركة الاختبار الشامل للزراعة');await pg.fill('#sheet [data-k="client.phone"]','0559998877');await pg.fill('#sheet [data-k="client.site"]','القصيم — بريدة');
+ await pg.fill('#sheet [data-k="client.name"]','شركة الاختبار الشامل للزراعة');await pg.fill('#sheet [data-k="client.phone"]','0559998877');await pg.selectOption('#sheet select[data-k="client.city"]','بريدة');await pg.fill('#sheet [data-k="client.site"]','القصيم — بريدة');
  await btn('حفظ');let s=await ST();const P=Object.values(s.projects).find(p=>p.client?.name==='شركة الاختبار الشامل للزراعة');ok(P&&P.stage==='lead',' 1 lead created');const id=P.id;
  ok(Object.values(s.clients).some(c=>c.name==='شركة الاختبار الشامل للزراعة'),' 1 client registered in clients list');
- await notSee('eng1',id,'setNeg','engineer');await notSee('finance',id,'setNeg','finance');
+ await notSee('eng1',id,'setNeg','engineer');await as('finance','project-'+id);ok(await has('[data-act="setNeg"]'),' 1 finance manager can also move the lead (projects.create)');
  // 2) accept negotiation
  await go('pgm',id);await click('[data-act="setNeg"][data-v="accepted"]');ok(await stage(id)==='study',' 2 negotiation accepted → study');
  // 3) tech office: study + budget

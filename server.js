@@ -12,20 +12,88 @@ const scrypt = promisify(crypto.scrypt);
 const COLLECTIONS = [
   "team", "items", "suppliers", "templates", "projects", "mreqs", "issues",
   "prs", "grns", "returns", "dlogs", "overruns", "claims", "moves", "costs",
-  "spay", "meta", "clients", "audit", "ftasks",
+  "spay", "meta", "clients", "audit", "ftasks", "sales",
 ];
 const PROJECT_STAGES = ["lead", "study", "budget", "budget_review", "quote", "contract_review", "setup", "planning", "execution", "handover_review", "close_review", "closed"];
 const DEFAULT_PERMS = {
-  gm: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export", "admin.users", "admin.roles", "admin.matrix", "admin.org", "admin.audit", "admin.demo"],
-  admin: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export", "admin.users", "admin.roles", "admin.matrix", "admin.org", "admin.audit", "admin.demo"],
-  pgm: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export"],
-  fin: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "data.import", "data.export"],
+  gm: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export", "admin.users", "admin.roles", "admin.matrix", "admin.org", "admin.audit", "admin.demo", "sales.create", "sales.approve"],
+  admin: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export", "admin.users", "admin.roles", "admin.matrix", "admin.org", "admin.audit", "admin.demo", "sales.create", "sales.approve"],
+  pgm: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "templates.manage", "tasks.assign", "data.import", "data.export"],
+  fin: ["view.dashboard", "view.pipeline", "view.clients", "projects.all", "projects.create", "view.stock", "view.purchasing", "view.finance", "view.settings", "see.money", "clients.manage", "items.manage", "suppliers.manage", "data.import", "data.export", "sales.approve"],
   tech: ["view.pipeline", "view.clients", "projects.all", "view.stock", "view.purchasing", "see.money", "data.export"],
   eng: ["view.stock", "data.export"],
-  store: ["view.stock", "view.purchasing", "items.manage", "data.import", "data.export"],
+  store: ["view.stock", "view.purchasing", "items.manage", "data.import", "data.export", "sales.create"],
 };
 const ROLE_BASE = { gm: "gm", pgm: "pgm", fin: "fin", eng: "eng", tech: "tech", store: "store", admin: "admin" };
 const SECRET_FIELDS = /^(passHash|password|passwordHash|passwordSalt|salt|session|token)$/i;
+// ---- AI assistant relay (the browser never sees the API key; every write still goes through /api/data checks) ----
+const AI_KEY = process.env.ANTHROPIC_API_KEY || "";
+const AI_MODEL = process.env.AI_MODEL || "claude-sonnet-5-5";
+const AI_BASE = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/+$/, "");
+const AI_MAX_PER_WINDOW = Math.max(1, Number(process.env.AI_MAX_REQUESTS_PER_10MIN || 120));
+const AI_WINDOW_MS = 10 * 60 * 1000;
+const aiUsage = new Map();
+function aiAllow(userId) {
+  const now = Date.now();
+  const recent = (aiUsage.get(userId) || []).filter(t => now - t < AI_WINDOW_MS);
+  if (recent.length >= AI_MAX_PER_WINDOW) { aiUsage.set(userId, recent); return false; }
+  recent.push(now);
+  aiUsage.set(userId, recent);
+  if (aiUsage.size > 5000) for (const [k, v] of aiUsage) if (!v.length || now - v[v.length - 1] > AI_WINDOW_MS) aiUsage.delete(k);
+  return true;
+}
+const AI_BLOCK_TYPES = new Set(["text", "image", "tool_use", "tool_result"]);
+function aiValidContent(content) {
+  if (typeof content === "string") return content.length <= 200000;
+  if (!Array.isArray(content) || content.length > 64) return false;
+  return content.every(b => b && typeof b === "object" && AI_BLOCK_TYPES.has(b.type)
+    && (b.type !== "image" || (b.source?.type === "base64" && /^image\/(jpeg|png|webp|gif)$/.test(b.source.media_type || "") && typeof b.source.data === "string" && b.source.data.length <= 7 * 1024 * 1024)));
+}
+function aiCleanRequest(body, user) {
+  const messages = Array.isArray(body.messages) ? body.messages : null;
+  if (!messages || !messages.length || messages.length > 80) fail(400, "محادثة غير صالحة");
+  for (const m of messages) if (!m || !["user", "assistant"].includes(m.role) || !aiValidContent(m.content)) fail(400, "محادثة غير صالحة");
+  if (messages[0].role !== "user") fail(400, "محادثة غير صالحة");
+  const tools = Array.isArray(body.tools) ? body.tools : [];
+  if (tools.length > 40) fail(400, "عدد الأدوات أكبر من المسموح");
+  const cleanTools = tools.map(t => {
+    if (!t || typeof t.name !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(t.name)) fail(400, "أداة غير صالحة");
+    return { name: t.name, description: String(t.description || "").slice(0, 4000), input_schema: t.input_schema && typeof t.input_schema === "object" ? t.input_schema : { type: "object", properties: {} } };
+  });
+  const system = `${String(body.system || "").slice(0, 80000)}\n\n[من الخادم] الحساب المسجل فعلياً: ${user.display_name || user.username} (${user.role}). أي تعديل يُطلب ينفذه المتصفح عبر واجهة النظام وتتحقق منه صلاحيات الخادم.`;
+  return { model: AI_MODEL, max_tokens: 2048, system, messages, ...(cleanTools.length ? { tools: cleanTools } : {}) };
+}
+async function aiRelay(req, res, user) {
+  checkOrigin(req);
+  if (!AI_KEY) return send(res, 503, { code: "AI_NOT_CONFIGURED", error: "المساعد غير مفعّل على الخادم" });
+  if (!aiAllow(user.id)) return send(res, 429, { code: "AI_RATE_LIMIT", error: "تجاوزت الحد المسموح من طلبات المساعد مؤقتاً" });
+  const body = await readBody(req, 12 * 1024 * 1024);
+  const payload = aiCleanRequest(body, user);
+  let upstream;
+  try {
+    upstream = await fetch(`${AI_BASE}/v1/messages`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": AI_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(120000),
+    });
+  } catch (error) {
+    console.error("[AI] upstream request failed:", error.message);
+    return send(res, 502, { code: "upstream_error", error: "تعذّر الاتصال بخدمة الذكاء الاصطناعي" });
+  }
+  let data = {};
+  try { data = await upstream.json(); } catch { data = {}; }
+  if (!upstream.ok) {
+    console.error(`[AI] upstream ${upstream.status}:`, data?.error?.type || "", data?.error?.message || "");
+    if (upstream.status === 429 || upstream.status === 529) return send(res, 503, { code: "AI_BUSY", error: "خدمة الذكاء الاصطناعي مشغولة الآن، حاول بعد قليل" });
+    if (upstream.status === 401 || upstream.status === 403) return send(res, 503, { code: "AI_NOT_CONFIGURED", error: "مفتاح خدمة الذكاء الاصطناعي غير صالح" });
+    if (upstream.status === 400 && /prompt is too long|too many tokens/i.test(data?.error?.message || "")) return send(res, 413, { code: "prompt_too_large", error: "المحادثة طويلة جداً" });
+    return send(res, 502, { code: "upstream_error", error: "تعذّر الحصول على رد من المساعد" });
+  }
+  return send(res, 200, { content: Array.isArray(data.content) ? data.content : [], stop_reason: data.stop_reason || "end_turn" });
+}
+const PERMS_ADDED_V2 = ["projects.create", "sales.create", "sales.approve"];
+const ALL_PERMS_V1 = [...new Set(Object.values(DEFAULT_PERMS).flat())].filter(p => !PERMS_ADDED_V2.includes(p));
 const MONEY_FIELDS = /^(cost|price|amount|total|vat|creditLimit|rate|finNote|payTerms|margin|profit|paid|payment|payments|invoice|financial|sale|expense|retained|advance|contractValue|subtotal|grandTotal)$/i;
 
 function fail(status, message) {
@@ -96,6 +164,34 @@ function redactMoney(value) {
   for (const [key, val] of Object.entries(value)) if (!MONEY_FIELDS.test(key)) out[key] = redactMoney(val);
   return out;
 }
+// Users who cannot see prices (store, engineers) create receipts and stock movements without them.
+// Fill the values from the purchase order / receipt / item so finance and stock valuation stay correct.
+function fillHiddenPrices(col, record, all) {
+  const itemCost = itemId => Number(all.items?.[itemId]?.cost) || 0;
+  if (col === "grns" && Array.isArray(record.lines)) {
+    const po = record.poId ? all.prs?.[record.poId] : null;
+    const rate = Number(po?.rate) || 1;
+    const lines = record.lines.map(line => {
+      if (Number(line.price)) return line;
+      const pl = po?.lines?.find(x => x.itemId === line.itemId);
+      const price = pl && Number(pl.price) ? Math.round(Number(pl.price) * rate * 100) / 100 : itemCost(line.itemId);
+      return { ...line, price };
+    });
+    return { ...record, lines };
+  }
+  if (col === "moves" && !Number(record.cost)) {
+    if (record.kind === "grn") {
+      const grn = Object.values(all.grns || {}).find(g => g.code === record.ref);
+      const line = grn?.lines?.find(x => x.itemId === record.itemId);
+      const po = grn?.poId ? all.prs?.[grn.poId] : null;
+      const pl = po?.lines?.find(x => x.itemId === record.itemId);
+      const cost = Number(line?.price) || (pl && Number(pl.price) ? Number(pl.price) * (Number(po.rate) || 1) : 0) || itemCost(record.itemId);
+      return { ...record, cost };
+    }
+    return { ...record, cost: itemCost(record.itemId) };
+  }
+  return record;
+}
 function preserveMoney(oldValue, newValue) {
   if (Array.isArray(oldValue) && Array.isArray(newValue)) {
     return newValue.map((next, i) => {
@@ -132,6 +228,11 @@ async function permissionsFor(user) {
   const info = defs[user.role] || {};
   const base = ROLE_BASE[user.role] || (info.base && ROLE_BASE[info.base] ? info.base : "eng");
   const perms = new Set(info.deleted ? [] : (info.perms || DEFAULT_PERMS[base] || []));
+  // Permissions introduced after a role was last saved fall back to that role's default.
+  if (!info.deleted && info.perms) {
+    const known = new Set(Array.isArray(info.known) ? info.known : ALL_PERMS_V1);
+    for (const p of DEFAULT_PERMS[base] || []) if (!known.has(p)) perms.add(p);
+  }
   if (base === "gm" || base === "admin") {
     perms.add("admin.users");
     perms.add("admin.roles");
@@ -212,6 +313,7 @@ function collectionAllowedRead(col, user, perms) {
   if (["claims", "costs", "spay"].includes(col)) return perms.has("see.money") && perms.has("view.finance");
   if (["prs", "grns"].includes(col)) return perms.has("view.purchasing") || perms.has("see.money");
   if (col === "clients") return perms.has("view.clients") || perms.has("clients.manage") || perms.has("projects.all");
+  if (col === "sales") return canReadSales(perms);
   if (col === "meta") return true;
   return true;
 }
@@ -283,17 +385,127 @@ function canWriteMeta(id, perms) {
   if (id === "demo") return perms.has("admin.demo");
   return false;
 }
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") return `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${stableJson(value[k])}`).join(",")}}`;
+  return JSON.stringify(value);
+}
+function isLogOnlyChange(existing, record) {
+  const rest = v => { const { log, id, ...other } = redactMoney(v || {}); return stableJson(other); };
+  const before = Array.isArray(existing.log) ? existing.log : [];
+  const after = Array.isArray(record.log) ? record.log : [];
+  if (after.length < before.length || after.length > before.length + 5) return false;
+  const kept = before.every(entry => after.some(x => stableJson(x) === stableJson(entry)));
+  return kept && rest(existing) === rest(record);
+}
+// ---- Material sales to outside buyers (not tied to a project) ----
+// The store prepares buyer + quantities; whoever holds sales.approve (finance) prices it, issues the invoice
+// and only then is stock deducted. Collections are appended afterwards and nothing else may change.
+const SALE_OPEN = ["fin", "rejected"];
+const SALE_ISSUED = ["invoiced", "partial", "paid"];
+const near = (a, b) => Math.abs(Number(a) - Number(b)) < 0.005;
+function canReadSales(perms) {
+  return perms.has("sales.create") || perms.has("sales.approve") || (perms.has("view.finance") && perms.has("see.money"));
+}
+function saleLinesOk(lines) {
+  return Array.isArray(lines) && lines.length > 0 && lines.length <= 200
+    && lines.every(l => l && typeof l.itemId === "string" && l.itemId && Number(l.qty) > 0)
+    && new Set(lines.map(l => l.itemId)).size === lines.length;
+}
+function saleMovedQty(all, sale, itemId) {
+  let qty = 0;
+  for (const m of Object.values(all.moves || {})) {
+    if (m.kind === "sale" && m.saleId === sale.id && m.itemId === itemId) qty += Number(m.qty) || 0;
+  }
+  return qty;
+}
+function mainBalance(all, itemId) {
+  let balance = 0;
+  for (const m of Object.values(all.moves || {})) {
+    if (m.itemId !== itemId) continue;
+    if (m.to === "MAIN") balance += Number(m.qty) || 0;
+    if (m.from === "MAIN") balance -= Number(m.qty) || 0;
+  }
+  return balance;
+}
+function canWriteSaleMove(record, existing, perms, all) {
+  if (existing || !perms.has("sales.approve") || !perms.has("see.money")) return false;
+  const sale = all.sales?.[record.saleId];
+  if (!sale || sale.status !== "fin" || record.ref !== sale.code) return false;
+  if (record.from !== "MAIN" || record.to !== "SALE") return false;
+  const line = (sale.lines || []).find(l => l.itemId === record.itemId);
+  const qty = Number(record.qty);
+  if (!line || !(qty > 0)) return false;
+  if (saleMovedQty(all, sale, record.itemId) + qty > Number(line.qty) + 1e-6) return false;
+  return mainBalance(all, record.itemId) + 1e-6 >= qty;
+}
+function canWriteSale(record, user, perms, existing, all) {
+  const canCreate = perms.has("sales.create");
+  const canApprove = perms.has("sales.approve") && perms.has("see.money");
+  const buyerOk = typeof record.buyer?.name === "string" && record.buyer.name.trim().length > 0;
+  if (!existing) {
+    return canCreate && record.status === "fin" && record.by === user.id && buyerOk && saleLinesOk(record.lines)
+      && !record.invoiceNo && !record.finBy;
+  }
+  if (SALE_OPEN.includes(existing.status)) {
+    if (existing.status === "fin" && canApprove && record.status === "rejected") {
+      return typeof record.rejectNote === "string" && record.rejectNote.trim().length > 0 && sameSaleRequest(existing, record);
+    }
+    if (existing.status === "fin" && canApprove && record.status === "invoiced") {
+      const invoiceNo = String(record.invoiceNo || "").trim();
+      if (!invoiceNo || !sameSaleRequest(existing, record)) return false;
+      if (Object.values(all.sales || {}).some(s => s.id !== existing.id && String(s.invoiceNo || "").trim() === invoiceNo)) return false;
+      if (!["SAR", "JOD", "USD"].includes(record.currency) || !(Number(record.rate) > 0)) return false;
+      if (record.currency === "SAR" && Number(record.rate) !== 1) return false;
+      if (!["local", "export"].includes(record.taxType)) return false;
+      if (!record.lines.every(l => Number(l.price) > 0)) return false;
+      if (Array.isArray(record.payments) && record.payments.length) return false;
+      const sub = Math.round(record.lines.reduce((t, l) => t + Number(l.qty) * Number(l.price), 0) * 100) / 100;
+      const vat = record.taxType === "local" ? Math.round(sub * 0.15 * 100) / 100 : 0;
+      if (!near(record.amount, sub) || !near(record.vat, vat) || !near(record.total, sub + vat)) return false;
+      // Stock must already be deducted, in full, for every line of this sale.
+      return existing.lines.every(l => near(saleMovedQty(all, existing, l.itemId), l.qty));
+    }
+    // The preparer side: edit / resubmit / cancel, never invoice.
+    if (!canCreate || !["fin", "cancelled"].includes(record.status)) return false;
+    if (record.invoiceNo || record.finBy || record.by !== existing.by || record.code !== existing.code) return false;
+    return record.status === "cancelled" || (buyerOk && saleLinesOk(record.lines));
+  }
+  if (SALE_ISSUED.includes(existing.status) && existing.status !== "paid") return canApprove && isSalePaymentOnly(existing, record);
+  return false;
+}
+function sameSaleRequest(existing, record) {
+  const key = v => stableJson({ code: v.code, by: v.by, buyer: v.buyer || null, lines: (v.lines || []).map(l => [l.itemId, Number(l.qty)]) });
+  return key(existing) === key(record);
+}
+function isSalePaymentOnly(existing, record) {
+  const rest = v => { const { payments, status, id, ...other } = v || {}; return stableJson(other); };
+  const before = Array.isArray(existing.payments) ? existing.payments : [];
+  const after = Array.isArray(record.payments) ? record.payments : [];
+  if (after.length !== before.length + 1) return false;
+  if (!before.every((p, i) => stableJson(p) === stableJson(after[i]))) return false;
+  const added = Number(after[after.length - 1]?.amount);
+  const paid = after.reduce((t, p) => t + (Number(p.amount) || 0), 0);
+  if (!(added > 0) || paid > Number(existing.total) + 0.01) return false;
+  const expected = paid >= Number(existing.total) - 0.01 ? "paid" : "partial";
+  return record.status === expected && rest(existing) === rest(record);
+}
 function canWriteCollection(col, record, user, perms, base, existing, all) {
   if (col === "team") return perms.has("admin.users");
   if (col === "meta") return canWriteMeta(record.id, perms);
   if (col === "audit") return false;
+  if (col === "projects") {
+    // A new project does not exist yet, so it cannot be "visible"; creation is its own permission and
+    // may only start the cycle (lead or opportunity), never jump to a later stage.
+    if (!existing) return perms.has("projects.create") && ["lead", "study"].includes(record.stage);
+    if (!canSeeProject(existing, user, perms, base)) return false;
+    if (perms.has("projects.all")) return true;
+    if (existing.setup?.engineerId === user.id && record.setup?.engineerId === user.id) return true;
+    // Store and other roles may only append to the activity log of a project they can see.
+    return isLogOnlyChange(existing, record);
+  }
   const projectIds = new Set([...recordProjectIds(col, record, all), ...recordProjectIds(col, existing || {}, all)]);
   if ([...projectIds].some(projectId => !canSeeProject(all.projects?.[projectId], user, perms, base))) return false;
-  if (col === "projects") {
-    if (perms.has("projects.all")) return true;
-    if (existing && existing.setup?.engineerId === user.id && record.setup?.engineerId === user.id) return true;
-    return !existing && base === "gm";
-  }
   if (col === "clients") return perms.has("clients.manage");
   if (col === "items") return perms.has("items.manage");
   if (col === "suppliers") return perms.has("suppliers.manage");
@@ -327,7 +539,9 @@ function canWriteCollection(col, record, user, perms, base, existing, all) {
     return base === "pgm" || base === "gm";
   }
   if (col === "claims" || col === "costs" || col === "spay") return perms.has("see.money") && perms.has("view.finance");
+  if (col === "sales") return canWriteSale(record, user, perms, existing, all);
   if (col === "moves") {
+    if (record.kind === "sale" || existing?.kind === "sale") return canWriteSaleMove(record, existing, perms, all);
     if (!perms.has("view.stock")) return false;
     if (base === "eng") {
       if (!["issue", "transfer"].includes(record.kind) || projectIds.size !== 1) return false;
@@ -527,6 +741,7 @@ async function handleApi(req, res, url) {
     const user = await readUserBySession(req);
     return send(res, 200, { authenticated: !!user, setupRequired: !(await hasSetup()), user: user ? publicUser(user) : null });
   }
+  if (req.method === "GET" && url.pathname === "/api/ai/status") return send(res, 200, { enabled: !!AI_KEY, images: !!AI_KEY });
   if (req.method === "POST" && url.pathname === "/api/auth/setup") return bootstrap(req, res);
   if (req.method === "POST" && url.pathname === "/api/auth/login") {
     checkOrigin(req);
@@ -567,6 +782,7 @@ async function handleApi(req, res, url) {
     await pool.query("UPDATE npi_records SET data=data-'mustChange' || jsonb_build_object('mustChange',false) WHERE collection='team' AND id=$1", [user.id]);
     return send(res, 200, { ok: true });
   }
+  if (req.method === "POST" && url.pathname === "/api/ai/chat") return aiRelay(req, res, user);
   if (req.method === "GET" && url.pathname === "/api/data") return send(res, 200, await getVisibleData(user));
   if (url.pathname.startsWith("/api/data/")) {
     checkOrigin(req);
@@ -592,6 +808,7 @@ async function handleApi(req, res, url) {
         return send(res, 200, { ok: true, record: saved });
       }
       let safe = cleanSecrets(record);
+      if (!existing && !permsInfo.perms.has("see.money")) safe = col === "sales" ? redactMoney(safe) : fillHiddenPrices(col, safe, all);
       if (existing && !permsInfo.perms.has("see.money")) {
         if (col === "projects") {
           safe = cleanSecrets(existing);
@@ -643,7 +860,7 @@ function serveStatic(req, res, url) {
     res.writeHead(200, {
       "Content-Type": item[1], "Content-Length": data.length, "Cache-Control": "no-store",
       "X-Content-Type-Options": "nosniff", "Referrer-Policy": "same-origin",
-      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+      "Permissions-Policy": "camera=(), microphone=(self), geolocation=()",
     });
     res.end(req.method === "HEAD" ? undefined : data);
   });

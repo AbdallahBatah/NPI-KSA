@@ -3,7 +3,8 @@ const {chromium,TEST_URL:U}=require('./support/browser');const fs=require('fs');
 const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed','seed.json')));
 const VW=+(process.argv[2]||1366),VH=+(process.argv[3]||860),TAG=VW<700?'mob':'lap';
 const ONLY=process.argv[4];
-const ROUTES=['home','pipeline','clients','projects','stock','purchasing','finance','cycle','settings','admin','profile'];
+const ROUTES=['home','pipeline','clients','projects','stock','purchasing','sales','finance','cycle','settings','admin','profile'];
+{const fx=require('./support/sales-fixture')(seed);seed.sales={...(seed.sales||{}),...fx.sales};seed.moves={...seed.moves,...fx.moves}}
 const SKIP=new Set(['logout','drawer','aiToggle','ptab','ftab','settab','atab','stab','nav','noop','closeSheet','aiMic','lang','theme','dd']);
 const issues=[];const note=(k,m)=>{issues.push(`[${TAG}] ${k}: ${m}`)};
 (async()=>{

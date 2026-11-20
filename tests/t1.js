@@ -64,7 +64,7 @@ const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed'
  await as('gm','project-'+P('NPI-2026-004'));await click('[data-act="closeProject"]');
  st=await pg.evaluate(id=>JSON.parse(localStorage.getItem('npi-local-v1')).projects[id].stage,P('NPI-2026-004'));console.log('D stage',st);
  // lead flow
- await as('pgm','pipeline');await shot('30-pipeline');await click('[data-act="newLead"]');await pg.fill('#sheet [data-k="client.name"]','عميل اختبار');await pg.fill('#sheet [data-k="client.phone"]','0500000000');await pg.fill('#sheet [data-k="client.site"]','الخبر');await sheetBtn('حفظ');await err();
+ await as('pgm','pipeline');await shot('30-pipeline');await click('[data-act="newLead"]');await pg.fill('#sheet [data-k="client.name"]','عميل اختبار');await pg.fill('#sheet [data-k="client.phone"]','0500000000');await pg.selectOption('#sheet select[data-k="client.city"]','بريدة');await pg.fill('#sheet [data-k="client.site"]','الخبر');await sheetBtn('حفظ');await err();
  await click('[data-act="setNeg"][data-v="accepted"]');await click('[data-act="startBudget"]');await sheetBtn('متابعة');await pg.waitForTimeout(300);await shot('31-budget-editor');await sheetBtn('حفظ');await err();await click('[data-act="submitBudget"]');
  await as('gm','cycle');await shot('32-cycle');await as('gm','settings');await shot('33-settings');
  // mobile

@@ -56,8 +56,31 @@
   first sign in.
 - Preserve `npi-local-v1` until the shared records have been checked. Exports
   from other browsers should be reviewed and reconciled separately.
-- Uploaded documents and the AI assistant remain unavailable in this hosting
-  mode without separate storage/API integrations.
+- Uploaded documents remain unavailable in this hosting mode without a separate
+  storage integration.
+
+## AI assistant (chat + voice)
+
+- Enabled when the `ANTHROPIC_API_KEY` secret is set (restart after adding it).
+  Optional: `AI_MODEL` (default `claude-sonnet-5-5`), `AI_MAX_REQUESTS_PER_10MIN`
+  (default 120 per user, per server instance), `ANTHROPIC_BASE_URL` (tests only).
+- `GET /api/ai/status` reports whether it is enabled. `POST /api/ai/chat` requires a
+  signed-in session and same-origin request, validates the conversation shape
+  (roles, block types, image types/sizes, tool definitions), stamps the real account
+  into the system prompt and relays to the Anthropic Messages API. The key never
+  reaches the browser.
+- The relay performs no writes. The browser runs the model's tools: read tools use
+  the user's already-filtered data; write tools only add steps to a plan. After the
+  user approves the bullet summary, each step runs through the same UI actions as
+  the buttons, so every write still goes through `/api/data` permission checks.
+- Voice uses the browser's Web Speech API (`ar-SA`); the page's Permissions-Policy
+  now allows `microphone=(self)`. No audio is uploaded to this server.
+- `node tests/ai-server.browser.js` (with `TEST_DATABASE_URL` pointing at an empty
+  database with `db/schema.sql` applied) runs the real server against a scripted
+  Anthropic stand-in: voice → plan → approval → server-side writes, permission
+  refusals, forged writes, and upstream errors.
+- Demo seed note: the seed's `gm` username is shorter than the server's 3-character
+  minimum, so it is not imported; the owner setup account becomes the GM.
 - The optional demo seed is served at `/seed/seed.json`; see README.md for the
   manual import procedure. Do not use demo credentials for real company data.
 - The web server deliberately serves only the app and optional demo seed, not
@@ -79,6 +102,25 @@
 - Do not use an editor's single-file run command (`bash $file`) for publishing:
   it does not launch the application server.
 - Publishing configuration changes take effect only after publishing again.
+
+## Workflow permissions (server)
+
+- `projects.create` (new): add leads, opportunities and projects and run lead
+  negotiation. Default for GM, admin, projects manager and finance manager.
+  Roles saved before this permission existed get it from their role default
+  (role definitions now record the permission list they were saved with).
+- New projects are authorised by `projects.create` and may only start at the
+  `lead` or `study` stage. (Previously the "can see this project" check ran
+  first and rejected every new project, so no one could add a lead/opportunity.)
+- Roles that can see a project but not edit it (e.g. store) may only append to
+  its activity log; any other change is still rejected.
+- Users without `see.money` create receipts/stock movements without prices; the
+  server fills them from the purchase order (or the item's reference cost) so
+  supplier invoices and payments have the right values.
+- `npm run test:server` runs the full cycle (`t7-server.browser.js`, 73 checks)
+  and alternative paths (`t9-server.browser.js`, 45 checks) against the real
+  server, logging in through the login screen for every hand-off. Each needs
+  `TEST_DATABASE_URL` pointing at an empty database with `db/schema.sql`.
 
 ## Tests
 
@@ -105,3 +147,22 @@ account plus one unknown bucket, with expired entries cleaned on login requests.
 The repository's existing Playwright tests are under `tests/`. `npm test` runs
 the imported test suite; its scripts may require adapting their original paths
 and browser executable assumptions before they can run on Replit.
+
+## Material sales to outside buyers (server rules)
+
+- Collection `sales`; no schema change (records live in `npi_records`). New permissions:
+  `sales.create` (default: store, GM, admin) and `sales.approve` (default: finance, GM, admin). Roles saved
+  before this release receive them through the same "newer permission" fallback as `projects.create`.
+- Read: holders of either permission, or `view.finance` + `see.money`. Users without `see.money` get the
+  record with every amount removed, and any price they send on create is dropped.
+- Create: `sales.create`, status `fin`, own user id, at least one line, no invoice fields.
+- While `fin` / `rejected`: the preparer side may edit, resubmit or cancel; `sales.approve` + `see.money` may
+  reject (reason required) or invoice. Invoicing requires unchanged buyer and quantities, a unique invoice
+  number, SAR/JOD/USD with a rate, `local` (15%) or `export` (0%), a price on every line, totals that add up,
+  and stock moves already written for every line.
+- Stock moves of kind `sale` (`MAIN` → `SALE`) are accepted only from `sales.approve`, only for a sale still
+  in `fin`, never above the requested quantity, and never above the main-store balance.
+- After invoicing only one new payment at a time may be appended, never above the total; a paid invoice is closed.
+- In server mode PDF and Excel files download straight from the browser (blob download).
+- `node tests/t12-server.browser.js` (with `TEST_DATABASE_URL`) covers these rules against the real server.
+
