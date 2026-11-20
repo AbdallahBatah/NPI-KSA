@@ -1,10 +1,12 @@
 // Full 16-step cycle against the REAL shared server (PostgreSQL + server-side permissions), logging in through
 // the login screen for every hand-off. Needs TEST_DATABASE_URL (empty database with db/schema.sql applied).
+// EMPTY_DB=1 runs the same cycle on a database with NO imported demo data: the owner creates every user, item,
+// opening balance and supplier from the screens, users change their first password, and the budget is typed by hand.
 const {chromium}=require('./support/browser');
 const DB=process.env.TEST_DATABASE_URL;if(!DB){console.log('SKIP t7-server.browser.js: set TEST_DATABASE_URL to an empty database with db/schema.sql applied');process.exit(0)}
 const PORT=Number(process.env.TEST_SERVER_PORT||5030);const U=`http://127.0.0.1:${PORT}/`;const OWNER=require('crypto').randomBytes(32).toString('hex');const fs=require('fs');
 const seed=JSON.parse(fs.readFileSync(require('path').join(__dirname,'..','seed','seed.json')));
-const VW=+(process.argv[2]||1366),VH=+(process.argv[3]||860),TAG=VW<700?'mob':'lap';
+const VW=+(process.argv[2]||1366),VH=+(process.argv[3]||860),EMPTY=process.env.EMPTY_DB==='1',TAG=(VW<700?'mob':'lap')+(EMPTY?' empty-db':'');
 let fails=0,n=0;const ok=(c,m)=>{n++;console.log(c?'PASS':'FAIL',TAG,m);if(!c)fails++};
 (async()=>{
  const b=await chromium.launch();const ctx=await b.newContext({viewport:{width:VW,height:VH}});const pg=await ctx.newPage();
@@ -18,17 +20,18 @@ let fails=0,n=0;const ok=(c,m)=>{n++;console.log(c?'PASS':'FAIL',TAG,m);if(!c)fa
  process.on('exit',()=>{try{srv.kill()}catch(e){}});
  for(let i=0;i<60&&!srvOut.includes('listening');i++)await new Promise(r=>setTimeout(r,100));
  // owner setup + one-time import of the demo snapshot, exactly as a new company would do it
- await pg.goto(U);await pg.evaluate(s=>{localStorage.clear();localStorage.setItem('npi-local-v1',JSON.stringify(s))},seed);await pg.reload();
+ await pg.goto(U);if(!EMPTY)await pg.evaluate(s=>{localStorage.clear();localStorage.setItem('npi-local-v1',JSON.stringify(s))},seed);await pg.reload();
  await pg.locator('#setupForm').waitFor();await pg.fill('#suOwnerToken',OWNER);await pg.fill('#suName','المدير العام');await pg.fill('#suUser','admin');await pg.fill('#suPass','Owner@2026x');await pg.fill('#suPass2','Owner@2026x');
- if(await pg.locator('#suImportLocal').count())await pg.locator('#suImportLocal').check();await pg.locator('#setupForm button[type=submit]').click();await pg.locator('.dash-h h1').waitFor({timeout:20000});
+ if(!EMPTY&&await pg.locator('#suImportLocal').count())await pg.locator('#suImportLocal').check();await pg.locator('#setupForm button[type=submit]').click();await pg.locator('.dash-h h1').waitFor({timeout:20000});
  // a second, independent session (the owner/GM) reads the shared database for assertions
  const ctxA=await b.newContext();const pa=await ctxA.newPage();await pa.route(/fonts\.(googleapis|gstatic)/,r=>r.abort());await pa.goto(U);await pa.locator('#loginForm').waitFor();await pa.fill('#lgUser','admin');await pa.fill('#lgPass','Owner@2026x');await pa.locator('#loginForm button[type=submit]').click();await pa.locator('.dash-h h1').waitFor({timeout:20000});
  const ST=async()=>{const d=await pa.evaluate(()=>fetch('/api/data').then(r=>r.json()));for(const k of ['projects','clients','dlogs','overruns','mreqs','issues','prs','grns','spay','claims','costs','returns','audit','ftasks','team'])d[k]=d[k]||{};return d};
- const who={};Object.values((await ST()).team).forEach(m=>who[m.username]=m);who.gm=who.admin;
- const PW=u=>u==='admin'?'Owner@2026x':'Npi@2026';let curUser='admin';
+ const who={};
+ const PWS={admin:'Owner@2026x'};const PW=u=>PWS[u]||'Npi@2026';let curUser='admin';
  const as=async(un,hash='home')=>{if(un==='gm')un='admin';cur=un+'@'+hash;
   if(curUser!==un){await pg.evaluate(()=>fetch('/api/auth/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}));await pg.goto(U);await pg.reload();await pg.locator('#loginForm').waitFor();await pg.waitForTimeout(400);
-   for(let k=0;k<3;k++){await pg.fill('#lgUser',un);await pg.fill('#lgPass',PW(un));await pg.waitForTimeout(80);if(await pg.inputValue('#lgUser')===un&&await pg.inputValue('#lgPass'))break;await pg.waitForTimeout(300)}await pg.locator('#loginForm button[type=submit]').click();try{await pg.locator('.dash-h h1').waitFor({timeout:20000})}catch(e){console.log('LOGIN FAILED',un,await pg.locator('#lgErr').innerText().catch(()=>''),(await pg.locator('body').innerText()).slice(0,200));throw e}curUser=un}
+   for(let k=0;k<3;k++){await pg.fill('#lgUser',un);await pg.fill('#lgPass',PW(un));await pg.waitForTimeout(80);if(await pg.inputValue('#lgUser')===un&&await pg.inputValue('#lgPass'))break;await pg.waitForTimeout(300)}await pg.locator('#loginForm button[type=submit]').click();try{await pg.locator('.dash-h h1, #forceForm').first().waitFor({timeout:20000})}catch(e){console.log('LOGIN FAILED',un,await pg.locator('#lgErr').innerText().catch(()=>''),(await pg.locator('body').innerText()).slice(0,200));throw e}
+   if(await pg.locator('#forceForm').count()){PWS[un]='Changed2026x';await pg.fill('#fcPass','Changed2026x');await pg.fill('#fcPass2','Changed2026x');await pg.locator('#forceForm button[type=submit]').click();await pg.locator('.dash-h h1').waitFor({timeout:20000})}curUser=un}
   await pg.goto(U+'#'+hash);await pg.reload();await pg.locator('.content').waitFor();await pg.waitForTimeout(350)};
  const vis=sel=>pg.locator(sel+':visible');
  const has=async sel=>(await vis(sel).count())>0;
@@ -41,6 +44,22 @@ let fails=0,n=0;const ok=(c,m)=>{n++;console.log(c?'PASS':'FAIL',TAG,m);if(!c)fa
  const stage=async id=>(await ST()).projects[id]?.stage;
  const go=async(un,id,tab)=>{await as(un,'project-'+id);if(tab)await click(`[data-act="ptab"][data-k="${tab}"]`)};
  const notSee=async(un,id,act,why)=>{await as(un,'project-'+id);ok(!(await has(`[data-act="${act}"]`)),`${un} cannot ${act} (${why})`)};
+ // ---- empty database: the owner sets the company up from the screens, nothing is imported
+ if(EMPTY){
+  ok(Object.keys((await ST()).projects).length===0&&Object.keys((await ST()).items||{}).length===0,' 0 database starts empty (no demo data)');
+  for(const [u,name,role] of [['pgm','م. خالد العتيبي','pgm'],['finance','عبدالرحمن الدوسري','fin'],['tech','المكتب الفني','tech'],['eng1','م. ياسر الحربي','eng'],['eng2','م. فهد القحطاني','eng'],['store','سلمان الزهراني','store']]){
+   await as('admin','admin');await click('.toolbar [data-act="editMember"]');await pg.fill('#sheet [data-k="name"]',name);await pg.selectOption('#sheet [data-k="role"]',role);await pg.fill('#sheet [data-k="username"]',u);await pg.fill('#sheet [data-k="pw"]','Npi@2026');await btn('حفظ')}
+  ok(Object.keys((await ST()).team).length===7,' 0 owner created the six users');
+  const ITEMS=[['T-PNL','ألواح شمسية 650 وات','عدد',320,'panels',2000],['T-STR','هياكل تثبيت الألواح','مجموعة',900,'structure',0],['T-CBL','كابلات نحاس 6 مم','م ط',4,'electrical',5000],['T-INV','إنفرتر 75 كيلو','عدد',5800,'electrical',10]];
+  for(const [code,name,unit,cost,boq] of ITEMS){await as('admin','settings');await click('[data-act="settab"][data-k="items"]');await click('.toolbar [data-act="editItem"]');await pg.fill('#sheet [data-k="code"]',code);await pg.fill('#sheet [data-k="name"]',name);await pg.selectOption('#sheet [data-k="unit"]',unit);await pg.fill('#sheet [data-k="cost"]',String(cost));await pg.selectOption('#sheet [data-k="boqCode"]',boq);await btn('حفظ')}
+  let s0=await ST();const itemId=c=>Object.values(s0.items).find(i=>i.code===c)?.id;ok(ITEMS.every(x=>itemId(x[0])),' 0 owner added the items');
+  for(const [code,,,,,qty] of ITEMS){if(!qty)continue;await as('admin','stock');await click('[data-act="stockAdjust"]');await pg.selectOption('#sheet [data-k="itemId"]',itemId(code));await pg.waitForTimeout(150);await pg.fill('#sheet [data-k="count"]',String(qty));await pg.fill('#sheet [data-k="reason"]','رصيد افتتاحي');await btn('تسجيل التسوية')}
+  await as('admin','settings');await click('[data-act="settab"][data-k="suppliers"]');await click('[data-act="editSupplier"]');await pg.fill('#sheet [data-k="name"]','شركة التوريدات المتحدة');await pg.fill('#sheet [data-k="creditLimit"]','500000');await btn('حفظ');
+  s0=await ST();const balOf=id=>Object.values(s0.moves||{}).reduce((t,m)=>m.itemId!==id?t:t+(m.to==='MAIN'?m.qty:0)-(m.from==='MAIN'?m.qty:0),0);
+  ok(balOf(itemId('T-PNL'))===2000&&balOf(itemId('T-CBL'))===5000&&Object.keys(s0.suppliers||{}).length===1,' 0 opening balances and supplier recorded');
+ }
+ Object.values((await ST()).team).forEach(m=>who[m.username]=m);who.gm=who.admin;
+
 
  // 1) PGM registers lead
  await as('pgm','pipeline');await click('[data-act="newLead"]');
@@ -56,6 +75,15 @@ let fails=0,n=0;const ok=(c,m)=>{n++;console.log(c?'PASS':'FAIL',TAG,m);if(!c)fa
  if(await pg.locator('#sheet [data-k="panels"]').count())await pg.fill('#sheet [data-k="panels"]','1230');
  await btn('حفظ');s=await ST();ok(N(s.projects[id].study?.kw)===799.5,' 3 study saved kw='+s.projects[id].study?.kw);
  await click('[data-act="startBudget"]');await btn('متابعة');await pg.waitForTimeout(300);
+ if(EMPTY){ // no templates on an empty database: type the budget by hand
+  const its=Object.values((await ST()).items);const iid=c=>its.find(i=>i.code===c).id;
+  const RES=[['material','T-PNL',1230],['material','T-STR',10],['material','T-CBL',3000],['material','T-INV',8],['labor','عمالة التركيب',1,'مقطوعية',60000],['equipment','ماكينة الدق',1,'مقطوعية',25000]];
+  for(let i=0;i<RES.length;i++){const [cat,ref,qty,unit,cost]=RES[i];await pg.locator('#sheet [data-act="addLine"][data-k="res"]').click();await pg.waitForTimeout(150);
+   if(cat==='material'){await pg.selectOption(`#sheet [data-k="res.${i}.itemId"]`,iid(ref));await pg.waitForTimeout(150)}else{await pg.selectOption(`#sheet [data-k="res.${i}.cat"]`,cat);await pg.waitForTimeout(150);await pg.fill(`#sheet [data-k="res.${i}.name"]`,ref);await pg.fill(`#sheet [data-k="res.${i}.unit"]`,unit);await pg.fill(`#sheet [data-k="res.${i}.cost"]`,String(cost))}
+   await pg.fill(`#sheet [data-k="res.${i}.qty"]`,String(qty))}
+  const BOQ=[['دق القواعد','piling','عدد',1000],['تركيب الهياكل','structure','عدد',1000],['تركيب الألواح','panels','لوح',1230],['تنفيذ أعمال الكهرباء','electrical','م ط',3000]];
+  for(let i=0;i<BOQ.length;i++){const [name,code,unit,qty]=BOQ[i];await pg.locator('#sheet [data-act="addLine"][data-k="boq"]').click();await pg.waitForTimeout(150);await pg.selectOption(`#sheet [data-k="boq.${i}.code"]`,code);await pg.waitForTimeout(150);await pg.fill(`#sheet [data-k="boq.${i}.name"]`,name);await pg.fill(`#sheet [data-k="boq.${i}.unit"]`,unit);await pg.fill(`#sheet [data-k="boq.${i}.qty"]`,String(qty));await pg.fill(`#sheet [data-k="boq.${i}.share"]`,'25')}
+ }
  if(await sheetOpen()){await btn('حفظ')}
  s=await ST();ok(s.projects[id].stage==='budget'&&s.projects[id].budget?.res?.length>5,' 4 budget prepared from template ('+s.projects[id].budget?.res?.length+' lines)');
  ok(!(await has('[data-act="submitBudget"]')),' 4 tech cannot submit budget to GM (PGM only)');
