@@ -557,6 +557,8 @@ const S={}; COLS.forEach(c=>S[c]={});
 let DB=null, ASSETS=null, DL=null, MODE='loading', loaded=new Set(), slowTimer=null, slowNote=false, SERVER_SETUP=false, SERVER_REFRESH=null;
 const LKEY='npi-local-v1';
 const E2E_MODE=new URLSearchParams(location.search).get('e2e')==='1'&&navigator.webdriver;
+// Opened as a hosted Claude artifact: the viewer provides storage, downloads, the assistant and dictation; there is no /api server.
+const HOSTED=!!(window.claude&&window.claude.use);
 function loadLocal(){try{const j=JSON.parse(localStorage.getItem(LKEY)||'null');if(j)COLS.forEach(c=>S[c]=j[c]||{})}catch(e){}}
 function saveLocal(){try{localStorage.setItem(LKEY,JSON.stringify(S))}catch(e){}}
 async function api(path,options={}){const r=await fetch(path,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(options.headers||{})},...options});let body={};try{body=await r.json()}catch(e){}if(!r.ok){const err=new Error(body.error||'تعذّر الاتصال بالخادم');err.status=r.status;throw err}return body}
@@ -598,7 +600,7 @@ async function del(col,id){INF++;try{return await delNow(col,id)}finally{INF--}}
 async function delNow(col,id){if((location.protocol==='file:'||E2E_MODE)&&window.__npiFreeze)return;if(MODE==='server'){try{await api(`/api/data/${encodeURIComponent(col)}/${encodeURIComponent(id)}`,{method:'DELETE'});auditLog('delete',col,id,S[col][id],null);delete S[col][id];schedule()}catch(e){toast(e.message||'تعذّر الحذف');throw e}return}auditLog('delete',col,id,S[col][id],null);delete S[col][id];schedule();if(DB){try{await queue(col+'/'+id,()=>DB.collection(col).doc(id).delete())}catch(e){toast('تعذّر الحذف')}}else saveLocal()}
 const L=col=>Object.values(S[col]);
 async function initStore(){
-  if(location.protocol!=='file:'&&!E2E_MODE){
+  if(!HOSTED&&location.protocol!=='file:'&&!E2E_MODE){
     MODE='server';DL=BROWSER_DL;
     try{await refreshServerStore()}
     catch(e){MODE='server';SERVER_SETUP=false;COLS.forEach(c=>loaded.add(c));schedule();console.error(e);setTimeout(()=>{if(MODE==='server')refreshServerStore().catch(err=>console.error(err))},3000)}
@@ -606,7 +608,8 @@ async function initStore(){
     return;
   }
   let db=null;
-  try{ if(window.claude?.use){ db=await window.claude.use('db'); try{ASSETS=await window.claude.use('assets')}catch(e){ASSETS=null} try{DL=await window.claude.use('downloads')}catch(e){DL=null} } }catch(e){db=null}
+  try{ if(window.claude?.use){ db=await window.claude.use('db'); try{ASSETS=await window.claude.use('assets')}catch(e){ASSETS=null} try{DL=await window.claude.use('downloads')}catch(e){DL=null} }
+    try{window.claude.use('dictation').then(d=>{if(d)dictInit(d)},()=>{})}catch(e){} }catch(e){db=null}
   if(db){
     DB=db; MODE='live';
     slowTimer=setTimeout(()=>{slowNote=true;MODE='live';schedule()},10000);
@@ -626,7 +629,7 @@ let ME=null;
 const SKEY='npi-sess';
 function sessLoad(){for(const st of ['localStorage','sessionStorage']){try{const v=JSON.parse(window[st].getItem(SKEY)||'null');if(v)return v}catch(e){}}return null}
 function sessSave(v,remember){for(const st of ['localStorage','sessionStorage']){try{window[st].removeItem(SKEY)}catch(e){}}if(!v)return;try{window[remember?'localStorage':'sessionStorage'].setItem(SKEY,JSON.stringify(v))}catch(e){}}
-let SESS=(location.protocol==='file:'||E2E_MODE)?sessLoad():null;let meId=SESS?.id||null;
+let SESS=(location.protocol==='file:'||E2E_MODE||HOSTED)?sessLoad():null;let meId=SESS?.id||null;
 async function hashPw(salt,pw){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(salt+':'+pw));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 function sessionUser(){if(!SESS)return null;const m=S.team[SESS.id];if(!m||m.active===false)return null;if(MODE==='server')return m;if(!m.passHash||m.passHash.slice(0,16)!==SESS.sig)return null;return m}
 const money=()=>perm('see.money');
@@ -2076,7 +2079,7 @@ function aiDraw(scroll){let el=$('#ai');if(!el){el=document.createElement('div')
   const nb=el.querySelector('.ai-msgs');if(nb)nb.scrollTop=scroll?nb.scrollHeight:keep;if(hadF&&!AI_BUSY)el.querySelector('#aiIn')?.focus({preventScroll:true})}
 function aiDrawStream(){const b=$('#ai .ai-stream');if(b){b.innerHTML=AI_STREAM?esc(AI_STREAM).replace(/\n/g,'<br>'):`<span class="ai-dots">${esc(AI_STAGE||'يحلل طلبك ويجهّز الخطة')}</span>`;const nb=$('#ai .ai-msgs');nb.scrollTop=nb.scrollHeight}else aiDraw(true)}
 A.aiToggle=()=>{AI_OPEN=!AI_OPEN;if(!AI_OPEN&&REC.on)recStop(false);aiDraw(true);if(AI_OPEN)setTimeout(()=>$('#aiIn')?.focus(),50)};
-A.aiVoice=()=>{AI_OPEN=true;aiDraw(true);setTimeout(()=>A.aiMic(),60)};
+A.aiVoice=()=>{AI_OPEN=true;aiDraw(true);if(DICT)A.aiMic();else setTimeout(()=>A.aiMic(),60)};
 A.aiClear=()=>{if(AI_BUSY)return;CHAT=[];aiDraw()};A.aiStop=()=>AI_CTL?.abort();
 A.aiSug=d=>{const i=$('#aiIn');if(i){i.value=d.t;i.focus()}};
 A.aiTog=(d,el)=>{const a=AI_ACT[d.id];if(a){a.on=!!el.checked;aiDraw()}};
@@ -2091,9 +2094,26 @@ document.addEventListener('change',e=>{if(e.target.id!=='aiFile')return;const f=
 const REC={on:false,sr:null,text:'',final:'',t0:0,timer:null,secs(){const s=Math.floor((Date.now()-this.t0)/1000);return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}};
 const MIC_HINT='التسجيل الصوتي غير مدعوم في هذا المتصفح أو أن إذن الميكروفون مرفوض. استخدم Chrome أو Edge أو Safari واسمح بالميكروفون، أو استخدم زر الإملاء في لوحة مفاتيح الجوال داخل خانة الكتابة.';
 function recStop(send){const r=REC.sr;REC.sendOnEnd=send;if(r){try{r.stop()}catch(e){recEnd()}}else recEnd()}
-function recEnd(){const send=REC.sendOnEnd;const text=(REC.final+' '+(REC.interim||'')).trim();clearInterval(REC.timer);REC.on=false;REC.sr=null;REC.text='';REC.final='';REC.interim='';REC.sendOnEnd=false;aiDraw(true);
+function recEnd(){const send=REC.sendOnEnd;const text=(REC.final+' '+(REC.interim||'')).trim();clearInterval(REC.timer);REC.on=false;REC.dict=false;REC.sr=null;REC.text='';REC.final='';REC.interim='';REC.sendOnEnd=false;aiDraw(true);
   if(send&&text)aiSend(text,{voice:true});else if(send&&!text){CHAT.push({role:'note',text:'لم يُلتقط أي كلام. تأكد من الميكروفون وتحدث بوضوح ثم أعد المحاولة.'});aiDraw(true)}}
-A.aiMic=()=>{if(AI_BUSY)return;if(REC.on)return recStop(true);const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+/* Hosted artifact view: the platform holds the microphone and hands the page text (the "dictation" capability). */
+let DICT=null,DICT_ANY_LANG=false;
+const recShow=()=>{const el=$('#ai .ai-rec-t');if(el)el.textContent=REC.text||'تحدث الآن…'};
+function dictInit(d){DICT=d;
+  d.onPartial(({text})=>{if(!REC.on||!REC.dict)return;REC.interim=text||'';REC.text=(REC.final+' '+REC.interim).trim();recShow()});
+  d.onFinal(({text})=>{if(!REC.on||!REC.dict)return;REC.final=(REC.final+' '+(text||'')).trim();REC.interim='';REC.text=REC.final;recShow()});
+  d.onState(({state,reason})=>{if(state!=='idle'||!REC.on||!REC.dict||reason==='stopped')return;
+    if(reason==='viewer_stopped')REC.sendOnEnd=true; // the viewer pressed the platform's Stop: finished speaking, show the plan
+    else{REC.sendOnEnd=false;if(!REC.failed)dictFail(reason)}
+    recEnd()})}
+function dictFail(code){REC.failed=true;if(code==='unavailable'&&!DICT_ANY_LANG){DICT_ANY_LANG=true;CHAT.push({role:'note',text:'الإملاء الصوتي بالعربية غير متاح في هذا العرض. اضغط الميكروفون مرة أخرى للتجربة بلغة حسابك، أو اكتب الأمر.'});return}
+  const m={not_granted:'لم يُسمح بالميكروفون لهذه الصفحة. يمكنك السماح به من قائمة الأذونات (Permissions) أعلى الصفحة، أو اكتب الأمر.',dismissed:'أُغلق طلب الإذن دون إجابة. اضغط الميكروفون مرة أخرى للسماح.',rate_limited:'خدمة الإملاء مشغولة الآن. حاول بعد قليل.',hidden:'توقف التسجيل لأن الصفحة لم تعد ظاهرة. أعد التسجيل.',time_limit:'انتهت مدة التسجيل. أعد التسجيل.',unavailable:'الإملاء الصوتي غير متاح في هذا العرض. اكتب الأمر أو استخدم زر الإملاء في لوحة المفاتيح.'}[code];
+  CHAT.push({role:'note',text:m||'تعذّر تشغيل الإملاء الصوتي. حاول مرة أخرى أو اكتب الأمر.'})}
+function dictStart(){Object.assign(REC,{on:true,dict:true,failed:false,keep:false,text:'',final:'',interim:'',t0:Date.now(),sr:{stop(){const done=()=>{if(REC.on&&REC.dict)recEnd()};DICT.stop().then(done,done)}}});
+  // start() must run inside the click itself, before anything is awaited
+  DICT.start(DICT_ANY_LANG?undefined:{language:'ar'}).catch(e=>{if(!REC.on||!REC.dict)return;if(e?.code==='stopped')return;REC.sendOnEnd=false;if(!REC.failed)dictFail(e?.code);recEnd()});
+  REC.timer=setInterval(()=>{const b=$('#ai .ai-rec b');if(b)b.textContent='جارٍ التسجيل '+REC.secs()},500);aiDraw(true)}
+A.aiMic=()=>{if(AI_BUSY)return;if(REC.on)return recStop(true);if(DICT)return dictStart();const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){CHAT.push({role:'note',text:MIC_HINT});return aiDraw(true)}
   try{const r=new SR();r.lang='ar-SA';r.interimResults=true;r.continuous=true;r.maxAlternatives=1;Object.assign(REC,{on:true,sr:r,text:'',final:'',interim:'',t0:Date.now()});
     r.onresult=e=>{let fin='',im='';for(let i=0;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)fin+=t+' ';else im+=t}REC.final=fin.trim();REC.interim=im;REC.text=(REC.final+' '+im).trim();const el=$('#ai .ai-rec-t');if(el)el.textContent=REC.text||'تحدث الآن…'};

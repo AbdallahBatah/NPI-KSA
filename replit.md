@@ -166,3 +166,11 @@ and browser executable assumptions before they can run on Replit.
 - In server mode PDF and Excel files download straight from the browser (blob download).
 - `node tests/t12-server.browser.js` (with `TEST_DATABASE_URL`) covers these rules against the real server.
 
+## Three run modes (decided once at start-up)
+
+- **Server** (Replit, any normal web host): Node + PostgreSQL, `/api/*`, server-side permissions.
+- **Hosted Claude artifact** (`window.claude.use` exists): no `/api` calls; storage, downloads, the assistant
+  and dictation come from the viewer's capabilities. The page must check this first, otherwise it would
+  try to reach a server that is not there. `tests/t13.js` simulates it.
+- **Local preview** (`file://`, or `?e2e=1` under automation): `localStorage` only.
+
