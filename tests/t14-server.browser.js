@@ -49,6 +49,19 @@ let fails=0,n=0;const ok=(c,m)=>{n++;console.log(c?'PASS':'FAIL',TAG,m);if(!c)fa
  ok((await pg.locator('.content').innerText()).includes('محول فيتشى 560 كيلو'),'B the company items are in the storekeeper item list');
  await logout();await login('mohammed.dawood',c7[3]);ok(await pg.locator('.dash-h h1').count()===0&&await pg.locator('#forceForm').count()===0,'B the one-time password no longer works after the change');
  await login('mohammed.dawood','Dawood2026x');ok(await pg.locator('.dash-h h1').count()===1,'B the new password works');
+ // ---- B2. selling materials: the list is the warehouse item list; nothing can be sold before balances exist
+ cur='mohammed.dawood@sales';await pg.goto(U+'#sales');await pg.reload();await pg.locator('.content').waitFor();await pg.waitForTimeout(400);await vis('[data-act="newSale"]').first().click();await pg.waitForTimeout(300);
+ let opts=await pg.locator('#sheet select[data-k="lines.0.itemId"] option').evaluateAll(os=>os.map(x=>({v:x.value,dis:x.disabled,t:x.textContent})));
+ ok(opts.length===21&&opts.filter(x=>x.v).every(x=>x.dis&&x.t.includes('لا يوجد رصيد'))&&await pg.locator('#sheet [data-nostock]').count()===1,'B2 all 20 company items are listed, none sellable yet, with a clear reason');
+ await pg.keyboard.press('Escape');
+ ok(await pa.evaluate(()=>fetch('/api/data/moves/open1',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({itemId:'ipnl',qty:100,from:'ADJ',to:'MAIN',kind:'adj',ref:'جرد: رصيد افتتاحي',at:new Date().toISOString()})}).then(r=>r.status))===200,'B2 owner records an opening balance for the panels');
+ await pg.goto(U+'#sales');await pg.reload();await pg.locator('.content').waitFor();await pg.waitForTimeout(400);await vis('[data-act="newSale"]').first().click();await pg.waitForTimeout(300);
+ opts=await pg.locator('#sheet select[data-k="lines.0.itemId"] option').evaluateAll(os=>os.map(x=>({v:x.value,dis:x.disabled,t:x.textContent})));const pnl=opts.find(x=>x.v==='ipnl');
+ ok(pnl&&!pnl.dis&&pnl.t.includes('المتاح 100')&&opts.filter(x=>x.v&&!x.dis).length===1&&await pg.locator('#sheet [data-nostock]').count()===0,'B2 the item with a balance becomes sellable: '+(pnl?.t||''));
+ await pg.fill('#sheet [data-k="buyer.name"]','شركة الأفق للطاقة');await pg.fill('#sheet [data-k="buyer.country"]','الأردن');await pg.selectOption('#sheet select[data-k="lines.0.itemId"]','ipnl');await pg.waitForTimeout(150);await pg.fill('#sheet [data-k="lines.0.qty"]','101');await btn('رفع للمالية');
+ ok((await pg.locator('#sheet .alert.bad').innerText().catch(()=>'')).includes('أكبر من المتاح'),'B2 cannot sell more than the warehouse balance');
+ await pg.fill('#sheet [data-k="lines.0.qty"]','40');await btn('رفع للمالية');s=await ST();
+ ok(Object.values(s.sales||{}).some(x=>x.status==='fin'&&x.lines[0].itemId==='ipnl'&&x.lines[0].qty===40),'B2 sale request saved against the warehouse item');
  // ---- C. finance signs in; supplier list is there
  const c3=creds.find(c=>c[2]==='ahmed.sobhy');await logout();await login('ahmed.sobhy',c3[3]);await pg.fill('#fcPass','Sobhy2026x');await pg.fill('#fcPass2','Sobhy2026x');await pg.locator('#forceForm button[type=submit]').click();await pg.locator('.dash-h h1').waitFor({timeout:20000});cur='ahmed.sobhy@settings';
  await pg.goto(U+'#settings');await pg.reload();await pg.locator('.content').waitFor();await pg.waitForTimeout(400);await vis('[data-act="settab"][data-k="suppliers"]').first().click();await pg.waitForTimeout(300);

@@ -32,6 +32,10 @@ const FAKE=()=>{window.__npiFakeSample=Object.assign(async function(input,opts){
   ok(await vis('.qa[data-act="newSale"]').count()===1,`${tag} store dashboard has the sale shortcut`);
   await as('store','sales');ok((await pg.locator('.content h1').innerText()).includes('بيع المواد'),`${tag} sales page opens`);await ovf('sales-empty');
   await vis('[data-act="newSale"]').first().click();await pg.waitForTimeout(200);
+  {const o=await pg.locator('#sheet select[data-k="lines.0.itemId"] option').evaluateAll(os=>os.map(x=>({v:x.value,dis:x.disabled,t:x.textContent})));const by=v=>o.find(x=>x.v===v);
+   ok(o.length===Object.keys(seed.items).length+1&&await pg.locator('#sheet select[data-k="lines.0.itemId"] optgroup').count()>=1,`${tag} the item list is the whole warehouse item list (${o.length-1} items)`);
+   ok(by('ipnl')&&!by('ipnl').dis&&by('ipnl').t.includes('المتاح 270')&&by('ic6').t.includes('المتاح 6,000'),`${tag} each item shows its sellable balance`);
+   ok(await pg.locator('#sheet [data-nostock]').count()===0,`${tag} no stock warning while items are available`)}
   await btn('رفع للمالية');ok((await shErr()).includes('اسم الجهة'),`${tag} buyer name is required`);
   await pg.fill('#sheet [data-k="buyer.name"]','شركة الأفق للطاقة');await pg.fill('#sheet [data-k="buyer.country"]','الأردن');await pg.fill('#sheet [data-k="buyer.city"]','عمّان');await pg.fill('#sheet [data-k="buyer.vat"]','JO-778812');await pg.fill('#sheet [data-k="buyer.phone"]','+96265550000');
   await btn('رفع للمالية');ok((await shErr()).includes('صنفاً'),`${tag} at least one item is required`);
@@ -118,6 +122,10 @@ const FAKE=()=>{window.__npiFakeSample=Object.assign(async function(input,opts){
   const s4=await review('شركة الشرق للتوريدات');await pg.fill('#sheet [data-k="lines.0.price"]','60000');await btn('اعتماد وإصدار الفاتورة');
   ok((await shErr()).includes('لا يكفي'),`${tag} approval refused when stock no longer covers the request`);
   s=await ST();ok(byBuyer(s,'شركة الشرق للتوريدات').status==='fin'&&!Object.values(s.moves).some(m=>m.saleId===s4.id),`${tag} refused approval leaves stock and request untouched`);await pg.keyboard.press('Escape');
+  await as('store','sales');await vis('[data-act="newSale"]').first().click();await pg.waitForTimeout(250);
+  {const o=await pg.locator('#sheet select[data-k="lines.0.itemId"] option').evaluateAll(os=>os.map(x=>({v:x.value,dis:x.disabled,t:x.textContent})));const inv=o.find(x=>x.v==='iinv630');
+   ok(inv&&inv.dis&&inv.t.includes('محجوز')&&o.length===Object.keys(seed.items).length+1,`${tag} a fully reserved item stays listed but cannot be picked: ${inv?.t}`)}
+  await pg.keyboard.press('Escape');
 
   // ---------- 9) assistant: plan → approve → same rules ----------
   await as('store','home');await pg.locator('.qa[data-voice]').click();await pg.waitForTimeout(250);if(await pg.locator('.ai-rec').count())await pg.click('[data-act="aiMicCancel"]');
