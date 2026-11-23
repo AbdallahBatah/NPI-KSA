@@ -174,3 +174,16 @@ and browser executable assumptions before they can run on Replit.
   try to reach a server that is not there. `tests/t13.js` simulates it.
 - **Local preview** (`file://`, or `?e2e=1` under automation): `localStorage` only.
 
+## Company master data (users, items, suppliers)
+
+- Source of truth: `seed/company.json` (from `seed/company-data.xlsx`). `npm run dev` and `npm run build`
+  run `tools/sync-company.py`, which copies it into `src/npi-projects.html` between the `COMPANY_DATA`
+  markers. Edit the JSON, restart, done. No passwords live in the repository.
+- Nothing is inserted automatically. A user holding `admin.users`, `items.manage` and `suppliers.manage`
+  (GM / admin) gets a dashboard notice and a card in Settings → Data; the action adds only what is missing
+  (matched by id, username or name for users; id, code or name for items; id or name for suppliers).
+- It uses the ordinary `PUT /api/data/...` calls, so the server's permission checks and audit apply and no
+  new endpoint exists. Users are created with a random temporary password (`mustChange`), shown once in
+  the browser; the server only ever stores the scrypt hash.
+- `node tests/t14-server.browser.js` (with `TEST_DATABASE_URL`) covers it on an empty database.
+
