@@ -1,0 +1,49 @@
+{
+  "version": "2026-11-23",
+  "source": "seed/company-data.xlsx",
+  "users": [
+    { "id": "emp01", "name": "أ. محمد سعد", "username": "mohammed.saad", "role": "gm" },
+    { "id": "emp02", "name": "م. عمار الصريطى", "username": "ammar", "role": "pgm" },
+    { "id": "emp03", "name": "أ. أحمد صبحى", "username": "ahmed.sobhy", "role": "fin" },
+    { "id": "emp04", "name": "م. مرزوق", "username": "marzouq", "role": "eng" },
+    { "id": "emp05", "name": "م. محمد عبد الناصر", "username": "mohammed.abdelnasser", "role": "eng" },
+    { "id": "emp06", "name": "م. نبيل", "username": "nabil", "role": "tech" },
+    { "id": "emp07", "name": "أ. محمد داوود", "username": "mohammed.dawood", "role": "store" },
+    { "id": "emp08", "name": "أ. أياد", "username": "eyad", "role": "admin" }
+  ],
+  "items": [
+    { "id": "ipnl", "code": "MAT-PNL-650", "name": "لوح شمسى 650 وات", "unit": "لوح", "boqCode": "panels", "serial": true },
+    { "id": "istr", "code": "MAT-STR-SET", "name": "هياكل الواح طاقة شمسية", "unit": "مجموعة", "boqCode": "structure" },
+    { "id": "ic6", "code": "MAT-CBL-6", "name": "كابلات 6 مم", "unit": "م ط", "boqCode": "electrical" },
+    { "id": "ic70", "code": "MAT-CBL-70", "name": "كابلات 70 مم", "unit": "م ط", "boqCode": "electrical" },
+    { "id": "ic16", "code": "MAT-CBL-16", "name": "كابلات 16 مم", "unit": "م ط", "boqCode": "electrical" },
+    { "id": "iinv315", "code": "MAT-INV-315", "name": "محول فيتشى 315 كيلو", "unit": "عدد", "boqCode": "electrical", "serial": true },
+    { "id": "iinv560", "code": "MAT-INV-560", "name": "محول فيتشى 560 كيلو", "unit": "عدد", "boqCode": "electrical", "serial": true },
+    { "id": "iinv630", "code": "MAT-INV-630", "name": "محول فيتشى 630 كيلو", "unit": "عدد", "boqCode": "electrical", "serial": true },
+    { "id": "iinvst55", "code": "MAT-INV-ST55", "name": "محول صن تك 5.5 كيلو", "unit": "عدد", "boqCode": "electrical", "serial": true },
+    { "id": "iinvb20", "code": "MAT-INV-BAT20", "name": "محول بطاريات 20 كيلو", "unit": "عدد", "boqCode": "electrical", "serial": true },
+    { "id": "iinv25", "code": "MAT-INV-25", "name": "محول 25 كيلو", "unit": "عدد", "boqCode": "electrical", "serial": true },
+    { "id": "ibat16", "code": "MAT-BAT-16", "name": "بطاريات ليثيوم 16 كيلو", "unit": "عدد", "boqCode": "electrical", "serial": true },
+    { "id": "icmb18", "code": "MAT-CMB-PV18", "name": "مجمع فيتشى PV18", "unit": "عدد", "boqCode": "electrical" },
+    { "id": "icmb20", "code": "MAT-CMB-PV20", "name": "مجمع فيتشى PV20", "unit": "عدد", "boqCode": "electrical" },
+    { "id": "icmb22", "code": "MAT-CMB-PV22", "name": "مجمع فيتشى PV22", "unit": "عدد", "boqCode": "electrical" },
+    { "id": "icmb36", "code": "MAT-CMB-36F", "name": "مجمع 36 فيوز", "unit": "عدد", "boqCode": "electrical" },
+    { "id": "imc4", "code": "MAT-CON-01", "name": "موصلات mc4 single", "unit": "عدد", "boqCode": "electrical" },
+    { "id": "imc4d", "code": "MAT-CON-02", "name": "موصلات mc4 dual", "unit": "عدد", "boqCode": "electrical" },
+    { "id": "ihold", "code": "MAT-FUS-HLD", "name": "هولدر", "unit": "عدد", "boqCode": "electrical" },
+    { "id": "ifuse", "code": "MAT-FUS-01", "name": "فيوز", "unit": "عدد", "boqCode": "electrical" }
+  ],
+  "suppliers": [
+    { "id": "slongi", "name": "longi solar" },
+    { "id": "sphila", "name": "شركة فيلادلفيا للطاقة الشمسية" },
+    { "id": "sbahra", "name": "شركة بحرا للكابلات" },
+    { "id": "safkar", "name": "شركة أفكار العولمة للطاقة المتجددة" },
+    { "id": "shulul", "name": "مؤسسة حلول الترشيد" },
+    { "id": "smasarat", "name": "شركة مسارات الامداد للانابيب" },
+    { "id": "sosool", "name": "شركة اصول البركة" },
+    { "id": "sriyadh", "name": "مجموعة كابلات الرياض" },
+    { "id": "sbraika", "name": "مؤسسة البريكة للتجارة" },
+    { "id": "szayel", "name": "zayel trading EST" },
+    { "id": "ssilsila", "name": "شركة سلسلة الاهلية" }
+  ]
+}
