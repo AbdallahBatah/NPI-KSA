@@ -28,7 +28,7 @@ const FAKE=()=>{window.__npiFakeSample=Object.assign(async function(input,opts){
  await as('gm','home');
  // new opportunity
  await pg.locator('.qa',{hasText:'فرصة جديدة'}).click();await pg.waitForTimeout(150);check((await pg.locator('#sheet h2,#sheet header').first().innerText()).includes('فرصة جديدة'),tag+' opportunity sheet');
- await pg.fill('#sheet [data-k="client.name"]','مزارع الواحة '+tag);await pg.fill('#sheet [data-k="client.phone"]','0551112222');await pg.fill('#sheet [data-k="client.site"]','الأحساء');await sheetBtn('حفظ');await shErr();
+ await pg.fill('#sheet [data-k="client.name"]','مزارع الواحة '+tag);await pg.fill('#sheet [data-k="client.phone"]','0551112222');await pg.selectOption('#sheet select[data-k="client.city"]','الأحساء');await pg.fill('#sheet [data-k="client.site"]','مزرعة الواحة');await sheetBtn('حفظ');await shErr();
  let s=await st();const op=Object.values(s.projects).find(p=>p.client?.name==='مزارع الواحة '+tag);check(op&&op.stage==='study'&&op.neg==='accepted',tag+' opportunity created at study stage');
  // work order
  await as('gm','home');await pg.locator('.qa',{hasText:'أمر عمل جديد'}).click();await pg.waitForTimeout(150);
@@ -46,7 +46,7 @@ const FAKE=()=>{window.__npiFakeSample=Object.assign(async function(input,opts){
  // ---- admin
  await as('gm','admin');const at=await pg.locator('.tabs button').allInnerTexts();check(at.length===5,tag+' admin tabs '+at.join('|'));await ovf('admin-users');await pg.screenshot({path:`out6/${tag}-admin-users.png`});
  for(const k of ['roles','matrix','org','audit']){await pg.click(`[data-act="atab"][data-k="${k}"]`);await pg.waitForTimeout(150);await ovf('admin-'+k);await pg.screenshot({path:`out6/${tag}-admin-${k}.png`,fullPage:tag==='lap'})}
- check(await pg.locator('table tbody tr').count()>3,tag+' audit has entries');
+ const audN=await pg.locator('table tbody tr:visible, .mcard:visible').count();if(audN<=3)console.log('  audit rows',audN,(await pg.locator('.content').innerText()).slice(0,400));check(audN>3,tag+' audit has entries');
  // custom role
  await pg.click('[data-act="atab"][data-k="roles"]');await pg.click('[data-act="editRole"]:not([data-id])');await pg.waitForTimeout(150);await ovf('role-sheet');
  await pg.fill('#sheet [data-k="name"]','مشرف موقع');await pg.selectOption('#sheet [data-k="base"]','eng');await pg.waitForTimeout(150);
@@ -79,12 +79,12 @@ const FAKE=()=>{window.__npiFakeSample=Object.assign(async function(input,opts){
  await pg.evaluate(()=>localStorage.setItem('fakePlan',JSON.stringify([{tool:'create_lead',args:{client_name:'مؤسسة الريان للزراعة',phone:'0551234567',site:'الخرج',project_name:'منظومة 3 آبار',notes:'يحتاج تشغيل 3 آبار'}}])));
  await pg.fill('#aiIn','سجّل عميل محتمل: مؤسسة الريان للزراعة، جوال 0551234567، الموقع الخرج');await pg.click('.ai-in button[type=submit]');await pg.waitForTimeout(600);
  const ls=await pg.evaluate(()=>JSON.parse(localStorage.getItem('lastSample')));check(ls.first.includes('مدير عام المشاريع')&&ls.tools.includes('create_lead')&&!ls.tools.includes('log_daily_work'),tag+' AI gets role context & role tools: '+ls.tools.join(','));
- check(await pg.locator('.ai-card.pending').count()===1,tag+' AI prepared a confirm card');
+ check(await pg.locator('.ai-plan li.planned').count()===1,tag+' AI prepared a plan with one step');
  s=await st();check(!Object.values(s.projects).some(p=>p.client?.name==='مؤسسة الريان للزراعة'),tag+' nothing saved before confirm');
- await pg.screenshot({path:`out6/${tag}-ai-card.png`});
- await pg.click('.ai-card [data-act="aiRun"]');await pg.waitForTimeout(400);
+ await pg.screenshot({path:`out6/${tag}-ai-plan.png`});
+ await pg.locator('[data-act="aiRunPlan"]').last().click();await pg.waitForTimeout(600);
  s=await st();const ai1=Object.values(s.projects).find(p=>p.client?.name==='مؤسسة الريان للزراعة');check(ai1&&ai1.stage==='lead'&&ai1.clientId,tag+' AI lead saved after confirm');
- check(await pg.locator('.ai-card.done').count()===1,tag+' card marked done');
+ check(await pg.locator('.ai-plan li.done').count()===1,tag+' plan step marked done');
  // eng: daily log through AI, with over-budget rejection
  await as('eng1','home');await pg.click('.ai-fab');
  await pg.evaluate(()=>localStorage.setItem('fakePlan',JSON.stringify([{tool:'log_daily_work',args:{project:'NPI-2026-004',entries:[{boq:'تركيب الألواح',qty:50},{boq:'تنفيذ الكهرباء',qty:200}],notes:'تركيب ومد كابلات',obstacles:'تأخر الكابلات'}},{tool:'log_daily_work',args:{project:'NPI-2026-004',entries:[{boq:'ماكينة الدق',qty:5}]}},{tool:'create_client',args:{name:'x'}}])));
@@ -92,14 +92,14 @@ const FAKE=()=>{window.__npiFakeSample=Object.assign(async function(input,opts){
  const txt=await pg.locator('.ai-m.assistant').last().innerText();check(txt.includes('Error')&&txt.includes('NO_TOOL:create_client'),tag+' over-budget rejected & no client tool for eng');
  const ls2=await pg.evaluate(()=>JSON.parse(localStorage.getItem('lastSample')));check(ls2.first.includes('لا يرى الأسعار'),tag+' AI told eng has no money');
  await pg.screenshot({path:`out6/${tag}-ai-eng.png`});await ovf('ai-eng');
- await pg.click('.ai-card [data-act="aiRun"]');await pg.waitForTimeout(400);
+ await pg.locator('[data-act="aiRunPlan"]').last().click();await pg.waitForTimeout(600);
  s=await st();const dl=Object.values(s.dlogs).find(d=>d.ai&&d.kind==='work');check(dl&&dl.entries.length===2,tag+' AI daily log saved');
  // store: PR via AI
  await as('store','home');await pg.click('.ai-fab');
  await pg.evaluate(()=>localStorage.setItem('fakePlan',JSON.stringify([{tool:'create_purchase_request',args:{lines:[{item:'موصل',qty:500}],note:'نواقص'}}])));
  await pg.fill('#aiIn','اطلب شراء 500 موصل');await pg.click('.ai-in button[type=submit]');await pg.waitForTimeout(600);
- const t3=await pg.locator('.ai-m.assistant').last().innerText();if(!(await pg.locator('.ai-card.pending').count()))console.log('  store result:',t3);
- if(await pg.locator('.ai-card.pending').count()){await pg.click('.ai-card [data-act="aiRun"]');await pg.waitForTimeout(400)}
+ const t3=await pg.locator('.ai-m.assistant').last().innerText();if(!(await pg.locator('.ai-plan li.planned').count()))console.log('  store result:',t3);
+ if(await pg.locator('.ai-plan li.planned').count()){await pg.locator('[data-act="aiRunPlan"]').last().click();await pg.waitForTimeout(600)}
  s=await st();check(Object.values(s.prs).some(x=>x.ai&&x.status==='pgm'),tag+' AI purchase request raised');
  // mic fallback note
  await pg.click('[data-act="aiMic"]');await pg.waitForTimeout(300);
